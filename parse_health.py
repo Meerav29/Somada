@@ -41,9 +41,15 @@ SLEEP_VALUES = {
     "HKCategoryValueSleepAnalysisAsleep": "asleep",
     "HKCategoryValueSleepAnalysisInBed": "in_bed",
     "HKCategoryValueSleepAnalysisAwake": "awake",
+    # Older Apple Health naming
     "HKCategoryValueSleepAnalysisCore": "asleep",
     "HKCategoryValueSleepAnalysisDeep": "asleep",
     "HKCategoryValueSleepAnalysisREM": "asleep",
+    # Newer Apple Health naming (used by Zepp/Amazfit)
+    "HKCategoryValueSleepAnalysisAsleepCore": "asleep",
+    "HKCategoryValueSleepAnalysisAsleepDeep": "asleep",
+    "HKCategoryValueSleepAnalysisAsleepREM": "asleep",
+    "HKCategoryValueSleepAnalysisAsleepUnspecified": "asleep",
 }
 
 def parse_date(date_str):
@@ -198,8 +204,8 @@ def main():
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)
 
-    print(f"\n✅ Done! Saved to {output_path}")
-    print(f"\n📊 Quick stats:")
+    print(f"\nDone! Saved to {output_path}")
+    print(f"\nQuick stats:")
     print(f"   Days of data: {summary['total_days']}")
     print(f"   Avg steps/day: {summary['avg_steps']:,}" if summary['avg_steps'] else "   Avg steps: N/A")
     print(f"   Avg sleep: {summary['avg_sleep_hours']}h" if summary['avg_sleep_hours'] else "   Avg sleep: N/A")

@@ -1,5 +1,6 @@
-# Apple Health export — large file, personal data
+# Apple Health exports — large files, personal data
 export.xml
+export_cda.xml
 
 # Parsed output — regenerated from export.xml, contains personal data
 health_data.json

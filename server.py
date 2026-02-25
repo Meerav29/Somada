@@ -1,17 +1,35 @@
 """
 Health Dashboard Backend
-Serves health data and proxies Claude API for the AI chat.
+Serves health data and proxies Claude and Gemini APIs for the AI chat.
 Usage: python server.py
 """
 
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from socketserver import ThreadingMixIn
 import json
 import os
+import subprocess
+import sys
 import urllib.request
 import urllib.error
 from datetime import datetime
 
+def load_env(path=".env"):
+    """Load KEY=value pairs from a .env file into os.environ."""
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
+
+load_env()
+
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 HEALTH_DATA_FILE = "health_data.json"
 
 def load_health_data():
@@ -81,7 +99,7 @@ If asked something you don't have data for, say so clearly."""
 
 def chat_with_claude(message, history, health_data):
     if not CLAUDE_API_KEY:
-        return "Error: CLAUDE_API_KEY not set. Please set your API key in the .env file."
+        return "Error: CLAUDE_API_KEY not set."
 
     system_prompt = build_system_prompt(health_data)
 
@@ -118,6 +136,44 @@ def chat_with_claude(message, history, health_data):
     except Exception as e:
         return f"Error: {str(e)}"
 
+def chat_with_gemini(message, history, health_data):
+    if not GEMINI_API_KEY:
+        return "Error: GEMINI_API_KEY not set."
+
+    system_prompt = build_system_prompt(health_data)
+
+    # Gemini uses "model" instead of "assistant" for role names
+    contents = []
+    for h in history:
+        role = "model" if h["role"] == "assistant" else h["role"]
+        contents.append({"role": role, "parts": [{"text": h["content"]}]})
+    contents.append({"role": "user", "parts": [{"text": message}]})
+
+    payload = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": contents,
+        "generationConfig": {"maxOutputTokens": 1024}
+    }
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read())
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        return f"API Error {e.code}: {error_body}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -137,6 +193,13 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/health":
             self.send_json(self.health_data if self.health_data else {"error": "No health data found. Run parse_health.py first."})
+        elif self.path == "/api/config":
+            self.send_json({
+                "providers": {
+                    "claude": bool(CLAUDE_API_KEY),
+                    "gemini": bool(GEMINI_API_KEY),
+                }
+            })
         elif self.path == "/" or self.path == "/index.html":
             self.path = "/index.html"
             super().do_GET()
@@ -144,18 +207,46 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        if self.path == "/api/chat":
+        if self.path == "/api/reparse":
+            if not os.path.exists("export.xml"):
+                self.send_json({"ok": False, "error": "export.xml not found. Upload it first."})
+                return
+            result = subprocess.run(
+                [sys.executable, "parse_health.py", "export.xml"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                self.send_json({"ok": True, "output": result.stdout})
+            else:
+                self.send_json({"ok": False, "error": result.stderr or result.stdout})
+
+        elif self.path == "/api/upload":
+            length = int(self.headers.get("Content-Length", 0))
+            if length == 0:
+                self.send_json({"ok": False, "error": "Empty file"})
+                return
+            data = self.rfile.read(length)
+            with open("export.xml", "wb") as f:
+                f.write(data)
+            self.send_json({"ok": True, "size": length})
+
+        elif self.path == "/api/chat":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length))
             message = body.get("message", "")
             history = body.get("history", [])
+            provider = body.get("provider", "claude")
 
             if not self.health_data:
                 self.send_json({"reply": "No health data loaded. Please run parse_health.py first."})
                 return
 
-            reply = chat_with_claude(message, history, self.health_data)
-            self.send_json({"reply": reply})
+            if provider == "gemini":
+                reply = chat_with_gemini(message, history, self.health_data)
+            else:
+                reply = chat_with_claude(message, history, self.health_data)
+
+            self.send_json({"reply": reply, "provider": provider})
         else:
             self.send_response(404)
             self.end_headers()
@@ -170,21 +261,27 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(response)
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle each request in a separate thread so long-running reparsing doesn't block the UI."""
+    daemon_threads = True
+
+
 if __name__ == "__main__":
     port = 8080
+    claude_status = "configured" if CLAUDE_API_KEY else "NOT SET"
+    gemini_status = "configured" if GEMINI_API_KEY else "NOT SET"
     print(f"""
-╔══════════════════════════════════════════╗
-║   Meerav's Health Dashboard Server      ║
-╚══════════════════════════════════════════╝
-
+Health Dashboard Server
+=======================
 Starting on http://localhost:{port}
 
-Make sure you have:
-  1. Run parse_health.py to generate health_data.json
-  2. Set CLAUDE_API_KEY environment variable
+API Keys:
+  CLAUDE_API_KEY : {claude_status}
+  GEMINI_API_KEY : {gemini_status}
 
+Make sure you have run parse_health.py to generate health_data.json
 """)
-    server = HTTPServer(("", port), Handler)
+    server = ThreadedHTTPServer(("", port), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

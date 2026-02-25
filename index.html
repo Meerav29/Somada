@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meerav · Health Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #080c10;
+    --surface: #0e1419;
+    --surface2: #151c24;
+    --border: rgba(255,255,255,0.06);
+    --text: #e8edf2;
+    --muted: #5a6a7a;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --green: #00e5a0;
+    --red: #ff4d6a;
+    --amber: #ffb347;
+    --purple: #a855f7;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .header {
+    position: relative;
+    z-index: 10;
+    padding: 32px 40px 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-left p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .header-right {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .main {
+    position: relative;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: calc(100vh - 89px);
+  }
+
+  .charts-panel {
+    padding: 24px 32px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+
+  /* Stat cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: rgba(0,212,255,0.2); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-color, var(--accent));
+    opacity: 0.8;
+  }
+
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-unit {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+    font-weight: 400;
+  }
+
+  .stat-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* Chart containers */
+  .chart-section {
+    margin-bottom: 24px;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+
+  .chart-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+  }
+
+  .chart-box canvas { max-height: 160px; }
+
+  /* Event legend */
+  .event-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .event-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid;
+    cursor: default;
+  }
+
+  /* Chat panel */
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--surface);
+  }
+
+  .chat-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .chat-header h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ai-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,255,0.2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  .chat-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .suggestion {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+
+  .suggestion:hover {
+    border-color: rgba(0,212,255,0.3);
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface2) transparent;
+  }
+
+  .message {
+    display: flex;
+    gap: 10px;
+    animation: fadeUp 0.2s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .avatar.ai {
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: white;
+    font-size: 10px;
+  }
+
+  .avatar.user-av {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .bubble {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .message.ai .bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-top-left-radius: 4px;
+  }
+
+  .message.user .bubble {
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--text);
+    border-top-right-radius: 4px;
+  }
+
+  .typing {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+
+  .typing span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px); }
+  }
+
+  .chat-input-area {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  textarea {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    resize: none;
+    height: 44px;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.15s;
+    overflow-y: hidden;
+  }
+
+  textarea:focus { border-color: rgba(0,212,255,0.4); }
+  textarea::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+  .send-btn:active { transform: scale(0.97); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .send-btn svg { width: 16px; height: 16px; fill: white; }
+
+  /* Loading state */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .loading-overlay h2 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .loading-bar {
+    width: 200px;
+    height: 2px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .loading-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    animation: loading 1.5s ease-in-out infinite;
+  }
+
+  @keyframes loading {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 60%; margin-left: 20%; }
+    100% { width: 0%; margin-left: 100%; }
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+  /* No data state */
+  .no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .no-data h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  .no-data code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <h2>Loading Health Data</h2>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">parsing wearable metrics...</p>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Meerav · Health Intelligence</h1>
+    <p><span class="live-dot"></span>AMAZFIT HELIO · APPLE HEALTH · 6 MONTHS</p>
+  </div>
+  <div class="header-right" id="header-date"></div>
+</div>
+
+<div class="main">
+  <div class="charts-panel" id="charts-panel">
+    <div class="no-data">
+      <h3>Loading data...</h3>
+    </div>
+  </div>
+
+  <div class="chat-panel">
+    <div class="chat-header">
+      <h2>Ask the data <span class="ai-badge">CLAUDE AI</span></h2>
+      <p class="chat-hint">Ask anything about patterns, correlations, or specific periods.</p>
+      <div class="suggestions" id="suggestions">
+        <button class="suggestion" onclick="sendSuggestion(this)">📚 How did finals week affect my sleep?</button>
+        <button class="suggestion" onclick="sendSuggestion(this)">🏃 Which weeks had the best recovery?</button>
+        <button class="suggestion" onclick="sendSuggestion(this)">❤️ What's the trend in my resting heart rate?</button>
+        <button class="suggestion" onclick="sendSuggestion(this)">✈️ How did travel affect my metrics?</button>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages"></div>
+
+    <div class="chat-input-area">
+      <div class="input-row">
+        <textarea
+          id="chat-input"
+          placeholder="Ask about your health data..."
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let healthData = null;
+let chatHistory = [];
+let charts = {};
+
+// Color scheme for events
+const EVENT_COLORS = {
+  "Finals Week": { bg: "rgba(255,77,106,0.15)", border: "#ff4d6a", text: "#ff4d6a" },
+  "Spring Break": { bg: "rgba(0,229,160,0.15)", border: "#00e5a0", text: "#00e5a0" },
+  "Winter Break": { bg: "rgba(0,229,160,0.15)", border: "#00e5a0", text: "#00e5a0" },
+  "Summer Break": { bg: "rgba(255,179,71,0.15)", border: "#ffb347", text: "#ffb347" },
+  "Fall Semester": { bg: "rgba(168,85,247,0.12)", border: "#a855f7", text: "#a855f7" },
+  "Spring Semester": { bg: "rgba(168,85,247,0.12)", border: "#a855f7", text: "#a855f7" },
+  "Travel": { bg: "rgba(0,212,255,0.1)", border: "#00d4ff", text: "#00d4ff" },
+  "default": { bg: "rgba(255,255,255,0.05)", border: "#5a6a7a", text: "#5a6a7a" }
+};
+
+function getEventColor(label) {
+  for (const [key, val] of Object.entries(EVENT_COLORS)) {
+    if (label.includes(key)) return val;
+  }
+  return EVENT_COLORS.default;
+}
+
+async function init() {
+  document.getElementById("header-date").innerHTML =
+    `${new Date().toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric", year:"numeric"})}<br><span style="color:var(--muted)">Personal Health Dashboard</span>`;
+
+  try {
+    const resp = await fetch("/api/health");
+    healthData = await resp.json();
+
+    if (healthData.error) {
+      showNoData(healthData.error);
+      return;
+    }
+
+    renderDashboard();
+  } catch(e) {
+    showNoData("Could not connect to server. Make sure server.py is running.");
+  } finally {
+    document.getElementById("loader").style.display = "none";
+  }
+}
+
+function showNoData(msg) {
+  document.getElementById("loader").style.display = "none";
+  document.getElementById("charts-panel").innerHTML = `
+    <div class="no-data">
+      <h3>No data found</h3>
+      <p style="margin-top:8px;font-size:13px">${msg}</p>
+      <p style="margin-top:16px;font-size:13px">Run: <code>python parse_health.py export.xml</code></p>
+    </div>`;
+}
+
+function getDailyArray(metric, days = 180) {
+  const entries = Object.values(healthData.daily).slice(-days);
+  return {
+    labels: entries.map(d => d.date),
+    values: entries.map(d => d[metric] ?? null)
+  };
+}
+
+function getEventAnnotations(labels) {
+  const annotations = {};
+  const events = healthData.events || [];
+
+  events.forEach((evt, i) => {
+    const startIdx = labels.findIndex(l => l >= evt.start);
+    const endIdx = labels.findLastIndex(l => l <= evt.end);
+
+    if (startIdx === -1) return;
+
+    const color = getEventColor(evt.label);
+    annotations[`evt${i}`] = {
+      type: "box",
+      xMin: startIdx,
+      xMax: endIdx > startIdx ? endIdx : startIdx + 1,
+      backgroundColor: color.bg,
+      borderColor: color.border,
+      borderWidth: 1,
+      label: {
+        content: `${evt.icon || ""} ${evt.label}`,
+        display: true,
+        color: color.text,
+        font: { size: 9, family: "'JetBrains Mono', monospace" },
+        position: "start"
+      }
+    };
+  });
+
+  return annotations;
+}
+
+function makeChart(canvasId, type, labels, datasets, yLabel = "", showAnnotations = true) {
+  const ctx = document.getElementById(canvasId).getContext("2d");
+
+  if (charts[canvasId]) charts[canvasId].destroy();
+
+  const annotations = showAnnotations ? getEventAnnotations(labels) : {};
+  const sampledLabels = labels.map((l, i) => i % 7 === 0 ? new Date(l).toLocaleDateString("en-US", {month:"short", day:"numeric"}) : "");
+
+  charts[canvasId] = new Chart(ctx, {
+    type,
+    data: {
+      labels: sampledLabels,
+      datasets: datasets.map(ds => ({
+        ...ds,
+        borderWidth: ds.borderWidth || 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.3,
+        spanGaps: true,
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { intersect: false, mode: "index" },
+      plugins: {
+        legend: {
+          display: datasets.length > 1,
+          labels: {
+            color: "#5a6a7a",
+            font: { size: 10, family: "'JetBrains Mono', monospace" },
+            boxWidth: 12,
+            padding: 12
+          }
+        },
+        tooltip: {
+          backgroundColor: "#0e1419",
+          borderColor: "rgba(255,255,255,0.08)",
+          borderWidth: 1,
+          titleColor: "#5a6a7a",
+          bodyColor: "#e8edf2",
+          padding: 10,
+          titleFont: { family: "'JetBrains Mono', monospace", size: 10 },
+          bodyFont: { family: "'Syne', sans-serif", size: 12 },
+          callbacks: {
+            title: (items) => labels[items[0].dataIndex] || "",
+            label: (item) => {
+              const val = item.raw;
+              if (val === null) return null;
+              return ` ${item.dataset.label || ""}: ${typeof val === 'number' ? val.toFixed(1) : val}${yLabel ? " " + yLabel : ""}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.03)" },
+          ticks: {
+            color: "#5a6a7a",
+            font: { size: 9, family: "'JetBrains Mono', monospace" },
+            maxRotation: 0,
+          },
+          border: { color: "rgba(255,255,255,0.06)" }
+        },
+        y: {
+          grid: { color: "rgba(255,255,255,0.04)" },
+          ticks: {
+            color: "#5a6a7a",
+            font: { size: 9, family: "'JetBrains Mono', monospace" },
+          },
+          border: { color: "rgba(255,255,255,0.06)" }
+        }
+      }
+    }
+  });
+}
+
+function renderDashboard() {
+  const summary = healthData.summary || {};
+  const events = healthData.events || [];
+
+  const panel = document.getElementById("charts-panel");
+
+  // Helper: format stat value
+  const fmt = (v, dec=0) => v != null ? (typeof v === 'number' ? v.toFixed(dec) : v) : "–";
+
+  panel.innerHTML = `
+    <!-- Stat Cards -->
+    <div class="stat-grid">
+      <div class="stat-card" style="--card-color: #00d4ff">
+        <div class="stat-label">Avg Daily Steps</div>
+        <div class="stat-value">${summary.avg_steps ? (summary.avg_steps/1000).toFixed(1) : "–"}<span class="stat-unit">k</span></div>
+        <div class="stat-sub">${summary.total_days || "–"} days tracked</div>
+      </div>
+      <div class="stat-card" style="--card-color: #a855f7">
+        <div class="stat-label">Avg Sleep</div>
+        <div class="stat-value">${fmt(summary.avg_sleep_hours, 1)}<span class="stat-unit">hrs</span></div>
+        <div class="stat-sub">best: ${fmt(summary.best_sleep, 1)}h</div>
+      </div>
+      <div class="stat-card" style="--card-color: #ff4d6a">
+        <div class="stat-label">Avg Resting HR</div>
+        <div class="stat-value">${fmt(summary.avg_resting_hr, 0)}<span class="stat-unit">bpm</span></div>
+        <div class="stat-sub">lower is better</div>
+      </div>
+      <div class="stat-card" style="--card-color: #00e5a0">
+        <div class="stat-label">Avg HRV</div>
+        <div class="stat-value">${fmt(summary.avg_hrv, 0)}<span class="stat-unit">ms</span></div>
+        <div class="stat-sub">higher is better</div>
+      </div>
+    </div>
+
+    <!-- Event legend -->
+    <div class="event-legend">
+      ${[...new Set(events.map(e => e.label))].map(label => {
+        const c = getEventColor(label);
+        const evt = events.find(e => e.label === label);
+        return `<div class="event-badge" style="background:${c.bg};border-color:${c.border};color:${c.text}">
+          ${evt?.icon || ""} ${label}
+        </div>`;
+      }).join("")}
+    </div>
+
+    <!-- Sleep chart -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">Sleep Duration</span>
+        <span class="chart-meta">daily · hours</span>
+      </div>
+      <div class="chart-box">
+        <canvas id="sleep-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Steps chart -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">Daily Steps</span>
+        <span class="chart-meta">daily · count</span>
+      </div>
+      <div class="chart-box">
+        <canvas id="steps-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- HR + HRV chart -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">Heart Rate & HRV</span>
+        <span class="chart-meta">daily averages</span>
+      </div>
+      <div class="chart-box">
+        <canvas id="hr-chart"></canvas>
+      </div>
+    </div>
+  `;
+
+  // Render charts
+  const sleep = getDailyArray("sleep_hours");
+  makeChart("sleep-chart", "line", sleep.labels, [{
+    label: "Sleep",
+    data: sleep.values,
+    borderColor: "#a855f7",
+    backgroundColor: "rgba(168,85,247,0.08)",
+    fill: true
+  }], "hrs");
+
+  const steps = getDailyArray("steps");
+  makeChart("steps-chart", "bar", steps.labels, [{
+    label: "Steps",
+    data: steps.values,
+    backgroundColor: "rgba(0,212,255,0.3)",
+    borderColor: "rgba(0,212,255,0.6)",
+    borderRadius: 2,
+  }], "steps");
+
+  const hr = getDailyArray("resting_hr");
+  const hrv = getDailyArray("hrv");
+  makeChart("hr-chart", "line", hr.labels, [
+    {
+      label: "Resting HR",
+      data: hr.values,
+      borderColor: "#ff4d6a",
+      backgroundColor: "rgba(255,77,106,0.06)",
+      fill: true,
+      yAxisID: "y"
+    },
+    {
+      label: "HRV",
+      data: hrv.values,
+      borderColor: "#00e5a0",
+      backgroundColor: "rgba(0,229,160,0.06)",
+      fill: true,
+      yAxisID: "y1"
+    }
+  ], "");
+
+  // Fix dual y-axis for HR chart
+  if (charts["hr-chart"]) {
+    charts["hr-chart"].options.scales.y1 = {
+      type: "linear",
+      display: true,
+      position: "right",
+      grid: { drawOnChartArea: false },
+      ticks: {
+        color: "#5a6a7a",
+        font: { size: 9, family: "'JetBrains Mono', monospace" }
+      },
+      border: { color: "rgba(255,255,255,0.06)" }
+    };
+    charts["hr-chart"].update();
+  }
+}
+
+// Chat functions
+function sendSuggestion(el) {
+  document.getElementById("chat-input").value = el.textContent.replace(/^[^\w]+/, "").trim();
+  document.getElementById("suggestions").style.display = "none";
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = "44px";
+  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+function appendMessage(role, content) {
+  const msgs = document.getElementById("chat-messages");
+  const div = document.createElement("div");
+  div.className = `message ${role}`;
+
+  const avatarText = role === "ai" ? "AI" : "M";
+  const avatarClass = role === "ai" ? "ai" : "user-av";
+
+  div.innerHTML = `
+    <div class="avatar ${avatarClass}">${avatarText}</div>
+    <div class="bubble">${content.replace(/\n/g, "<br>")}</div>
+  `;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  const msgs = document.getElementById("chat-messages");
+  const div = document.createElement("div");
+  div.className = "message ai";
+  div.id = "typing-indicator";
+  div.innerHTML = `
+    <div class="avatar ai">AI</div>
+    <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+  `;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById("typing-indicator");
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById("chat-input");
+  const btn = document.getElementById("send-btn");
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = "";
+  input.style.height = "44px";
+  btn.disabled = true;
+
+  appendMessage("user", msg);
+  showTyping();
+
+  chatHistory.push({ role: "user", content: msg });
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg, history: chatHistory.slice(-10) })
+    });
+    const data = await resp.json();
+
+    removeTyping();
+    appendMessage("ai", data.reply);
+    chatHistory.push({ role: "assistant", content: data.reply });
+  } catch(e) {
+    removeTyping();
+    appendMessage("ai", "Error connecting to server. Make sure server.py is running with your API key set.");
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

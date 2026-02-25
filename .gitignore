@@ -1,0 +1,15 @@
+# Apple Health export — large file, personal data
+export.xml
+
+# Parsed output — regenerated from export.xml, contains personal data
+health_data.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# OS
+.DS_Store
+Thumbs.db

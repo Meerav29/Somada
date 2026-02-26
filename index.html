@@ -376,6 +376,7 @@ textarea::placeholder { color:var(--muted); }
 .btn svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .btn-group { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .upload-area {
+  display: block;
   border: 2px dashed var(--border);
   border-radius: 8px;
   padding: 20px;
@@ -396,6 +397,12 @@ textarea::placeholder { color:var(--muted); }
 .status-msg.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: var(--green); display: block; }
 .status-msg.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--red); display: block; }
 .status-msg.loading { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); display: block; }
+.progress-wrap { background: var(--border); border-radius: 4px; height: 5px; overflow: hidden; margin: 8px 0 4px; }
+.progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s ease; }
+.progress-bar.indeterminate { width: 30%; animation: indeterminate 1.6s ease-in-out infinite; }
+@keyframes indeterminate { 0% { margin-left: 0%; } 50% { margin-left: 50%; } 100% { margin-left: 70%; } }
+.upload-detail { font-size: 10px; color: var(--muted); margin-top: 4px; }
+.upload-error-detail { margin-top: 8px; padding: 8px; background: rgba(248,113,113,0.08); border-radius: 5px; font-size: 10px; max-height: 140px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
 
 /* ── Loading overlay ─────────────────────────────────────── */
 .loading-overlay { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; gap:14px; transition:background 0.25s; }
@@ -637,9 +644,9 @@ function renderPage(page) {
         </div>
         <div class="settings-card">
           <h3 style="margin-bottom:12px">Upload Apple Health export</h3>
-          <label class="upload-area" id="upload-area">
+          <label class="upload-area" id="upload-area" style="padding:36px 24px;font-size:13px">
             <input type="file" id="upload-status-input" accept=".xml" onchange="handleFileUpload(this)">
-            <svg viewBox="0 0 24 24" style="width:28px;height:28px;margin:0 auto 10px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <svg viewBox="0 0 24 24" style="width:36px;height:36px;margin:0 auto 12px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Click or drag export.xml here
           </label>
           <div id="upload-status"></div>
@@ -1293,32 +1300,112 @@ async function handleFileUpload(input) {
   const file = input.files[0];
   if (!file) return;
   const el = document.getElementById('upload-status');
-  el.className = 'status-msg loading';
-  el.textContent = `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)...`;
+
+  function showError(msg, detail) {
+    el.className = 'status-msg error';
+    el.innerHTML = `<strong>Error:</strong> ${msg}${detail ? `<div class="upload-error-detail">${detail}</div>` : ''}`;
+  }
+
+  // File validation
+  if (!file.name.toLowerCase().endsWith('.xml')) {
+    showError('Wrong file type — select the export.xml file, not the ZIP or any other format.');
+    return;
+  }
+  if (file.size === 0) {
+    showError('The selected file is empty.');
+    return;
+  }
+  if (file.size > 600 * 1024 * 1024) {
+    showError(`File is ${(file.size/1024/1024).toFixed(0)} MB — too large. Make sure you selected export.xml from inside the unzipped folder, not the ZIP itself.`);
+    return;
+  }
+
+  const startTime = Date.now();
+  let timerInterval;
+
+  function elapsed() { return Math.floor((Date.now() - startTime) / 1000); }
+
+  function renderProgress(pct, label) {
+    el.className = 'status-msg loading';
+    el.innerHTML = `
+      <div>${label}</div>
+      <div class="progress-wrap"><div class="progress-bar" id="u-bar" style="width:${pct}%"></div></div>
+      <div class="upload-detail" id="u-detail"></div>`;
+  }
+
+  function updateDetail(pct) {
+    const d = document.getElementById('u-detail');
+    if (d) d.textContent = `${pct}% · ${elapsed()}s elapsed`;
+  }
+
+  // Upload phase
+  renderProgress(0, `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`);
+  timerInterval = setInterval(() => {
+    const bar = document.getElementById('u-bar');
+    const pct = bar ? parseInt(bar.style.width) || 0 : 0;
+    updateDetail(pct);
+  }, 1000);
+
   try {
-    const uploadResp = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': file.name },
-      body: file
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          const bar = document.getElementById('u-bar');
+          if (bar) bar.style.width = pct + '%';
+          updateDetail(pct);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            data.ok ? resolve(data) : reject({ msg: 'Server rejected the file', detail: data.error });
+          } catch(e) { reject({ msg: 'Invalid response from server', detail: xhr.responseText }); }
+        } else {
+          reject({ msg: `Upload failed (HTTP ${xhr.status})`, detail: xhr.responseText });
+        }
+      };
+      xhr.onerror = () => reject({ msg: 'Network error — could not reach the server. Is it running?', detail: null });
+      xhr.open('POST', '/api/upload');
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.setRequestHeader('X-Filename', file.name);
+      xhr.send(file);
     });
-    const upData = await uploadResp.json();
-    if (!upData.ok) throw new Error(upData.error || 'Upload failed');
-    el.textContent = 'Upload complete. Parsing data (this may take a few minutes)...';
+
+    // Parse phase — indeterminate
+    el.innerHTML = `
+      <div>Parsing health data — this may take 2–3 min for large files</div>
+      <div class="progress-wrap"><div class="progress-bar indeterminate" id="u-bar"></div></div>
+      <div class="upload-detail" id="u-detail">0s elapsed</div>`;
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      const d = document.getElementById('u-detail');
+      if (d) d.textContent = `${elapsed()}s elapsed`;
+    }, 1000);
+
     const reparseResp = await fetch('/api/reparse', { method: 'POST' });
+    if (!reparseResp.ok) throw { msg: `Server error during parse (HTTP ${reparseResp.status})`, detail: await reparseResp.text() };
     const reparseData = await reparseResp.json();
+
+    clearInterval(timerInterval);
+
     if (reparseData.ok) {
-      el.className = 'status-msg success';
-      el.textContent = 'Done! Loading your dashboard...';
       const hr = await fetch('/api/health');
-      healthData = await hr.json();
+      const hd = await hr.json();
+      if (hd.error) { showError('Data parsed but failed to load', hd.error); return; }
+      healthData = hd;
+      el.className = 'status-msg success';
+      el.textContent = `Done! Loaded in ${elapsed()}s — opening dashboard...`;
       setTimeout(() => navigate('dashboard'), 800);
     } else {
-      el.className = 'status-msg error';
-      el.textContent = 'Parse error: ' + (reparseData.error || 'Unknown');
+      showError('Parsing failed — see details below', reparseData.error || 'Unknown error');
     }
   } catch(e) {
-    el.className = 'status-msg error';
-    el.textContent = 'Error: ' + e.message;
+    clearInterval(timerInterval);
+    if (e && e.msg) showError(e.msg, e.detail);
+    else showError('Unexpected error', e.message || String(e));
   }
 }
 

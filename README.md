@@ -1,4 +1,4 @@
-# Meerav's Health Intelligence Dashboard
+# Somada
 
 A personal health analytics dashboard powered by Apple Health data + Claude AI.
 

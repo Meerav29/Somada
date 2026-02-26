@@ -168,8 +168,8 @@ body::before {
 
 /* ── Page header ─────────────────────────────────────────── */
 .page-header { margin-bottom: 24px; }
-.page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; transition: color 0.25s; }
-.page-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; transition: color 0.25s; }
+.page-sub { font-family: 'Syne', sans-serif; font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0; }
 
 /* ── Stat grid (dashboard cards) ─────────────────────────── */
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
@@ -177,17 +177,17 @@ body::before {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 18px 20px;
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow);
   transition: border-color 0.15s, background 0.25s;
 }
 .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--card-color,var(--accent)); opacity:0.75; }
-.stat-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px; }
-.stat-value { font-size:24px; font-weight:700; color:var(--text); line-height:1; transition:color 0.25s; }
-.stat-unit { font-size:11px; color:var(--muted); margin-left:3px; font-weight:400; }
-.stat-sub { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); margin-top:6px; }
+.stat-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0.2px; text-transform:uppercase; margin-bottom:8px; }
+.stat-value { font-size:30px; font-weight:700; color:var(--text); line-height:1; transition:color 0.25s; }
+.stat-unit { font-size:14px; color:var(--muted); margin-left:3px; font-weight:400; }
+.stat-sub { font-family:'Syne',sans-serif; font-size:11px; color:var(--muted); margin-top:6px; letter-spacing:0; }
 
 /* ── Stats row (page-level summary bar) ──────────────────── */
 .stats-row {
@@ -213,8 +213,8 @@ body::before {
 .charts-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .chart-section { margin-bottom: 18px; }
 .chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-.chart-title { font-size:12px; font-weight:600; color:var(--text); transition:color 0.25s; }
-.chart-meta { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); }
+.chart-title { font-size:14px; font-weight:700; color:var(--text); transition:color 0.25s; }
+.chart-meta { font-family:'Syne',sans-serif; font-size:11px; color:var(--muted); letter-spacing:0; }
 .chart-box {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -234,14 +234,14 @@ body::before {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 15px 16px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
 }
-.sparkline-card .spark-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:4px; }
-.sparkline-card .spark-value { font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px; line-height:1; }
-.sparkline-card .spark-unit { font-size:10px; color:var(--muted); font-weight:400; margin-left:2px; }
-.sparkline-card .spark-delta { font-family:'JetBrains Mono',monospace; font-size:9px; margin-top:6px; }
+.sparkline-card .spark-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0.2px; text-transform:uppercase; margin-bottom:4px; }
+.sparkline-card .spark-value { font-size:21px; font-weight:700; color:var(--text); margin-bottom:8px; line-height:1; }
+.sparkline-card .spark-unit { font-size:12px; color:var(--muted); font-weight:400; margin-left:2px; }
+.sparkline-card .spark-delta { font-family:'Syne',sans-serif; font-size:11px; margin-top:6px; letter-spacing:0; }
 .spark-delta.up { color:var(--green); }
 .spark-delta.down { color:var(--red); }
 .spark-delta.neutral { color:var(--muted); }
@@ -617,15 +617,33 @@ function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
+  document.getElementById('page-content').dataset.page = page;
   renderPage(page);
   window.location.hash = page;
 }
 function renderPage(page) {
   if (!healthData && page !== 'settings') {
     document.getElementById('page-content').innerHTML = `
-      <div class="empty">
-        <h3>No data loaded</h3>
-        <p style="margin-top:8px;font-size:13px">Go to <strong>Settings</strong> to import your Apple Health export.</p>
+      <div style="max-width:560px;margin:48px auto;padding:0 16px">
+        <div class="settings-card" style="margin-bottom:20px">
+          <h3 style="margin-bottom:14px">How to export your Apple Health data</h3>
+          <ol style="margin:0;padding-left:18px;font-size:13px;color:var(--muted);line-height:2">
+            <li>Open the <strong style="color:var(--text)">Health</strong> app on your iPhone</li>
+            <li>Tap your <strong style="color:var(--text)">profile picture</strong> in the top-right corner</li>
+            <li>Scroll down and tap <strong style="color:var(--text)">Export All Health Data</strong></li>
+            <li>Share the ZIP file to your computer (AirDrop, email, etc.) and <strong style="color:var(--text)">unzip it</strong></li>
+            <li>Upload the <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">export.xml</code> file below</li>
+          </ol>
+        </div>
+        <div class="settings-card">
+          <h3 style="margin-bottom:12px">Upload Apple Health export</h3>
+          <label class="upload-area" id="upload-area">
+            <input type="file" id="upload-status-input" accept=".xml" onchange="handleFileUpload(this)">
+            <svg viewBox="0 0 24 24" style="width:28px;height:28px;margin:0 auto 10px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Click or drag export.xml here
+          </label>
+          <div id="upload-status"></div>
+        </div>
       </div>`;
     return;
   }
@@ -825,25 +843,25 @@ function renderDashboard() {
       <div class="sparkline-card">
         <div class="spark-label">Steps · last 30d</div>
         <div class="spark-value">${cur30Steps?(cur30Steps/1000).toFixed(1):'–'}<span class="spark-unit">k/day</span></div>
-        <canvas id="spark-steps" height="60"></canvas>
+        <canvas id="spark-steps" height="80"></canvas>
         ${deltaHTML(cur30Steps,prev30Steps)}
       </div>
       <div class="sparkline-card">
         <div class="spark-label">Sleep · last 30d</div>
         <div class="spark-value">${fmt(cur30Sleep,1)}<span class="spark-unit">hrs</span></div>
-        <canvas id="spark-sleep" height="60"></canvas>
+        <canvas id="spark-sleep" height="80"></canvas>
         ${deltaHTML(cur30Sleep,prev30Sleep)}
       </div>
       <div class="sparkline-card">
         <div class="spark-label">Resting HR · last 30d</div>
         <div class="spark-value">${fmt(cur30Hr,0)}<span class="spark-unit">bpm</span></div>
-        <canvas id="spark-hr" height="60"></canvas>
+        <canvas id="spark-hr" height="80"></canvas>
         ${deltaHTML(cur30Hr,prev30Hr,true)}
       </div>
       <div class="sparkline-card">
         <div class="spark-label">HRV · last 30d</div>
         <div class="spark-value">${fmt(cur30Hrv,0)}<span class="spark-unit">ms</span></div>
-        <canvas id="spark-hrv" height="60"></canvas>
+        <canvas id="spark-hrv" height="80"></canvas>
         ${deltaHTML(cur30Hrv,prev30Hrv)}
       </div>
     </div>
@@ -1232,19 +1250,6 @@ function renderSettings() {
       </div>
 
       <div class="settings-card">
-        <h3>API Keys</h3>
-        <div class="settings-row">
-          <span class="settings-row-label">CLAUDE_API_KEY</span>
-          <span class="key-status"><span class="key-dot ${availableProviders.claude?'set':'unset'}"></span>${availableProviders.claude?'Configured':'Not set'}</span>
-        </div>
-        <div class="settings-row">
-          <span class="settings-row-label">GEMINI_API_KEY</span>
-          <span class="key-status"><span class="key-dot ${availableProviders.gemini?'set':'unset'}"></span>${availableProviders.gemini?'Configured':'Not set'}</span>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">Set keys in your <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent)">Vercel project → Settings → Environment Variables</code>. Changes take effect on the next deployment.</p>
-      </div>
-
-      <div class="settings-card">
         <h3>Life Events</h3>
         <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">Events are defined in <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">parse_health.py</code> under <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">LIFE_EVENTS</code>.</p>
         <div style="max-height:180px;overflow-y:auto">
@@ -1303,9 +1308,10 @@ async function handleFileUpload(input) {
     const reparseData = await reparseResp.json();
     if (reparseData.ok) {
       el.className = 'status-msg success';
-      el.textContent = 'Done! Data has been updated.';
+      el.textContent = 'Done! Loading your dashboard...';
       const hr = await fetch('/api/health');
       healthData = await hr.json();
+      setTimeout(() => navigate('dashboard'), 800);
     } else {
       el.className = 'status-msg error';
       el.textContent = 'Parse error: ' + (reparseData.error || 'Unknown');

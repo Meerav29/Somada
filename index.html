@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meerav · Health Intelligence</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
 
@@ -285,7 +286,8 @@ body::before {
   border-radius: 10px;
   display: flex;
   flex-direction: column;
-  height: 480px;
+  height: calc(100vh - 340px);
+  min-height: 520px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
 }
@@ -323,9 +325,15 @@ body::before {
 .avatar { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
 .avatar.ai { background:var(--accent); color:#fff; }
 .avatar.user-av { background:var(--surface2); border:1px solid var(--border); color:var(--muted); }
-.bubble { max-width:85%; padding:9px 13px; border-radius:10px; font-size:12.5px; line-height:1.6; transition:background 0.25s, border-color 0.25s; }
+.bubble { max-width:85%; padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.65; transition:background 0.25s, border-color 0.25s; }
 .message.ai   .bubble { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-top-left-radius:3px; }
 .message.user .bubble { background:var(--accent-faint); border:1px solid var(--accent-border); color:var(--text); border-top-right-radius:3px; }
+.message.ai .bubble p { margin:0 0 8px; }
+.message.ai .bubble p:last-child { margin-bottom:0; }
+.message.ai .bubble ol, .message.ai .bubble ul { margin:4px 0 8px 18px; padding:0; }
+.message.ai .bubble li { margin-bottom:5px; }
+.message.ai .bubble strong { font-weight:700; color:var(--text); }
+.message.ai .bubble em { font-style:italic; color:var(--muted); }
 .typing { display:flex; gap:4px; padding:2px 0; align-items:center; }
 .typing span { width:5px; height:5px; border-radius:50%; background:var(--muted); animation:bounce 1.2s infinite; }
 .typing span:nth-child(2){animation-delay:0.2s} .typing span:nth-child(3){animation-delay:0.4s}
@@ -404,6 +412,65 @@ textarea::placeholder { color:var(--muted); }
 .empty h3 { font-size:16px; color:var(--text); margin-bottom:8px; }
 .empty code { font-family:'JetBrains Mono',monospace; background:var(--surface2); padding:2px 6px; border-radius:4px; font-size:11px; color:var(--accent); }
 .divider { height:1px; background:var(--border); margin:20px 0; }
+
+/* ── Auth ────────────────────────────────────────────────── */
+.auth-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+  transition: background 0.25s;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 36px 32px;
+  width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+}
+.auth-logo { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1.5px; color:var(--muted); margin-bottom:20px; }
+.auth-title { font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.auth-sub { font-size:12px; color:var(--muted); margin-bottom:24px; }
+.auth-input {
+  width:100%; box-sizing:border-box;
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-family:'Syne',sans-serif; font-size:13px;
+  outline:none; margin-bottom:10px; transition:border-color 0.15s, background 0.25s;
+}
+.auth-input:focus { border-color:var(--accent-border); }
+.auth-input::placeholder { color:var(--muted); }
+.auth-error { font-size:11.5px; color:var(--red); min-height:16px; margin-bottom:8px; line-height:1.4; }
+.auth-btn {
+  width:100%; padding:10px; border-radius:8px; border:none;
+  background:var(--accent); color:#fff; font-family:'Syne',sans-serif;
+  font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s;
+  margin-bottom:16px;
+}
+.auth-btn:hover { opacity:0.88; }
+.auth-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.auth-toggle { text-align:center; font-size:12px; color:var(--muted); }
+.auth-toggle button { background:none; border:none; color:var(--accent); font-family:'Syne',sans-serif; font-size:12px; cursor:pointer; padding:0 4px; text-decoration:underline; }
+.auth-divider { height:1px; background:var(--border); margin:0 0 16px; }
+
+/* ── User panel (sidebar) ────────────────────────────────── */
+.user-panel {
+  padding:10px 14px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.user-email {
+  display:block; font-family:'JetBrains Mono',monospace; font-size:9.5px;
+  color:var(--muted); letter-spacing:0.3px; margin-bottom:6px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.logout-btn {
+  width:100%; padding:5px 0; border-radius:6px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-family:'Syne',sans-serif;
+  font-size:10px; cursor:pointer; letter-spacing:0.4px;
+  transition:border-color 0.15s, color 0.15s, background 0.15s;
+}
+.logout-btn:hover { border-color:var(--red); color:var(--red); background:rgba(248,113,113,0.06); }
 </style>
 </head>
 <body>
@@ -456,6 +523,10 @@ textarea::placeholder { color:var(--muted); }
   </div>
 
   <div class="sidebar-bottom">
+    <div class="user-panel" id="user-panel" style="display:none">
+      <span class="user-email" id="user-email"></span>
+      <button class="logout-btn" onclick="handleLogout()">SIGN OUT</button>
+    </div>
     <div class="nav-item" data-page="settings" onclick="navigate('settings')" style="margin-bottom:4px">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Settings
@@ -467,6 +538,24 @@ textarea::placeholder { color:var(--muted); }
     </button>
   </div>
 </nav>
+
+<!-- Auth overlay -->
+<div class="auth-overlay" id="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">HEALTH INTELLIGENCE</div>
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-sub" id="auth-sub">Sign in to access your dashboard</div>
+    <div class="auth-divider"></div>
+    <input class="auth-input" id="auth-email" type="email" placeholder="Email address" autocomplete="email">
+    <input class="auth-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()">
+    <div class="auth-error" id="auth-error"></div>
+    <button class="auth-btn" id="auth-submit" onclick="submitAuth()">Sign in</button>
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">Don't have an account?</span>
+      <button onclick="toggleAuthMode()" id="auth-toggle-btn">Sign up</button>
+    </div>
+  </div>
+</div>
 
 <!-- Main -->
 <main class="main">
@@ -480,6 +569,9 @@ textarea::placeholder { color:var(--muted); }
 let healthData = null;
 let charts = {};
 let currentPage = 'dashboard';
+let supabaseClient = null;
+let currentUser = null;
+let authMode = 'login'; // 'login' | 'signup'
 let currentProvider = 'claude';
 let availableProviders = { claude: false, gemini: false };
 let chatHistory = [];
@@ -1126,24 +1218,17 @@ function renderSettings() {
         <div class="settings-row"><span class="settings-row-label">Avg steps</span><span class="settings-row-value">${s.avg_steps?(s.avg_steps/1000).toFixed(1)+'k':'–'}</span></div>
         <div class="settings-row"><span class="settings-row-label">Avg sleep</span><span class="settings-row-value">${s.avg_sleep_hours?s.avg_sleep_hours.toFixed(1)+'h':'–'}</span></div>
         <div class="settings-row"><span class="settings-row-label">Last parsed</span><span class="settings-row-value">${genAt}</span></div>
-        <div class="btn-group">
-          <button class="btn primary" onclick="doReparse()">
-            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Re-parse export.xml
-          </button>
-        </div>
-        <div id="reparse-status"></div>
       </div>
 
       <div class="settings-card">
-        <h3>Upload New Export</h3>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Upload a new <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">export.xml</code> from Apple Health. This will replace the current file and re-parse automatically.</p>
-        <label class="upload-area" id="upload-area">
-          <input type="file" id="file-input" accept=".xml" onchange="handleFileUpload(this)">
-          <svg viewBox="0 0 24 24" style="width:24px;height:24px;margin:0 auto 8px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Click to select export.xml
-        </label>
-        <div id="upload-status"></div>
+        <h3>Updating Your Data</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">To refresh your health data, run the parser locally and redeploy:</p>
+        <ol style="font-size:12px;color:var(--muted);margin:0 0 0 16px;padding:0;line-height:2">
+          <li>Export from Apple Health → <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">export.xml</code></li>
+          <li>Run <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">python parse_health.py export.xml</code></li>
+          <li>Commit <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">health_data.json</code> and push</li>
+          <li>Vercel redeploys automatically</li>
+        </ol>
       </div>
 
       <div class="settings-card">
@@ -1156,7 +1241,7 @@ function renderSettings() {
           <span class="settings-row-label">GEMINI_API_KEY</span>
           <span class="key-status"><span class="key-dot ${availableProviders.gemini?'set':'unset'}"></span>${availableProviders.gemini?'Configured':'Not set'}</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">Keys are loaded from <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent)">.env</code> in the project directory. Edit that file and restart the server to update.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">Set keys in your <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent)">Vercel project → Settings → Environment Variables</code>. Changes take effect on the next deployment.</p>
       </div>
 
       <div class="settings-card">
@@ -1263,10 +1348,42 @@ function sendSuggestion(el) {
 function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
 function autoResize(el) { el.style.height='40px'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 
+function renderMarkdown(md) {
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function inline(s) {
+    return esc(s)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+  }
+  const lines = md.split('\n');
+  let html = '', inList = null, para = [];
+  function flushPara() { if (para.length) { html += `<p>${para.join('<br>')}</p>`; para = []; } }
+  function flushList() { if (inList) { html += `</${inList}>`; inList = null; } }
+  for (const line of lines) {
+    const ol = line.match(/^(\d+)\.\s+(.*)/);
+    const ul = line.match(/^[-*]\s+(.*)/);
+    if (ol) {
+      flushPara();
+      if (inList !== 'ol') { flushList(); html += '<ol>'; inList = 'ol'; }
+      html += `<li>${inline(ol[2])}</li>`;
+    } else if (ul) {
+      flushPara();
+      if (inList !== 'ul') { flushList(); html += '<ul>'; inList = 'ul'; }
+      html += `<li>${inline(ul[1])}</li>`;
+    } else if (line.trim() === '') {
+      flushList(); flushPara();
+    } else {
+      flushList(); para.push(inline(line));
+    }
+  }
+  flushList(); flushPara();
+  return html;
+}
 function appendMessageEl(container, role, content) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
-  div.innerHTML = `<div class="avatar ${role==='ai'?'ai':'user-av'}">${role==='ai'?'AI':'M'}</div><div class="bubble">${content.replace(/\n/g,'<br>')}</div>`;
+  const body = role === 'ai' ? renderMarkdown(content) : content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  div.innerHTML = `<div class="avatar ${role==='ai'?'ai':'user-av'}">${role==='ai'?'AI':'M'}</div><div class="bubble">${body}</div>`;
   container.appendChild(div);
   return div;
 }
@@ -1314,9 +1431,103 @@ async function sendMessage() {
   }
 }
 
-// ── Init ─────────────────────────────────────────────────
-async function init() {
-  initTheme();
+// ── Auth ─────────────────────────────────────────────────
+async function initSupabase() {
+  try {
+    const cfg = await fetch('/api/supabase_config').then(r => r.json());
+    if (!cfg.url || !cfg.anonKey) return false; // not configured — skip auth
+    supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey);
+  } catch(e) { return false; }
+
+  // Check for an existing session
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    showUserPanel(currentUser.email);
+    return true; // already logged in
+  }
+
+  // Listen for future auth changes
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      currentUser = session.user;
+      showUserPanel(currentUser.email);
+      await loadAppData();
+      showApp();
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      document.getElementById('user-panel').style.display = 'none';
+      showAuthOverlay();
+    }
+  });
+
+  // Not logged in — show auth screen
+  showAuthOverlay();
+  return null; // signal: waiting for login
+}
+
+function showAuthOverlay() {
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('loader').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('auth-overlay').style.display = 'none';
+  const hash = window.location.hash.slice(1) || 'dashboard';
+  navigate(hash);
+  document.getElementById('loader').style.display = 'none';
+}
+
+function showUserPanel(email) {
+  const panel = document.getElementById('user-panel');
+  const emailEl = document.getElementById('user-email');
+  if (panel && emailEl) { emailEl.textContent = email; panel.style.display = 'block'; }
+}
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  const isLogin = authMode === 'login';
+  document.getElementById('auth-submit').textContent  = isLogin ? 'Sign in' : 'Create account';
+  document.getElementById('auth-sub').textContent     = isLogin ? 'Sign in to access your dashboard' : 'Create an account to get started';
+  document.getElementById('auth-toggle-text').textContent = isLogin ? "Don't have an account?" : 'Already have an account?';
+  document.getElementById('auth-toggle-btn').textContent  = isLogin ? 'Sign up' : 'Sign in';
+  document.getElementById('auth-error').textContent = '';
+  document.getElementById('auth-password').autocomplete = isLogin ? 'current-password' : 'new-password';
+}
+
+async function submitAuth() {
+  if (!supabaseClient) return;
+  const email   = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl   = document.getElementById('auth-error');
+  const btn     = document.getElementById('auth-submit');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  btn.disabled = true;
+  errEl.textContent = '';
+  try {
+    const { error } = authMode === 'login'
+      ? await supabaseClient.auth.signInWithPassword({ email, password })
+      : await supabaseClient.auth.signUp({ email, password });
+    if (error) {
+      errEl.textContent = error.message;
+    } else if (authMode === 'signup') {
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = 'Check your email to confirm your account.';
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error. Please try again.';
+  } finally {
+    btn.disabled = false;
+    if (errEl.style.color !== 'var(--green)') errEl.style.color = '';
+  }
+}
+
+async function handleLogout() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+}
+
+async function loadAppData() {
   try {
     const [healthResp, configResp] = await Promise.all([
       fetch('/api/health'),
@@ -1329,6 +1540,22 @@ async function init() {
     if (availableProviders.claude)      currentProvider = 'claude';
     else if (availableProviders.gemini) currentProvider = 'gemini';
   } catch(e) { /* server not running */ }
+}
+
+// ── Init ─────────────────────────────────────────────────
+async function init() {
+  initTheme();
+
+  // Try to init Supabase auth
+  const authResult = await initSupabase();
+  // authResult === false  → Supabase not configured, load app normally
+  // authResult === null   → waiting for login (auth overlay is shown)
+  // authResult === true   → already logged in, proceed
+
+  if (authResult === null) return; // waiting for user to log in
+
+  // Load health + config data (shared by loadAppData path too)
+  await loadAppData();
 
   const hash = window.location.hash.slice(1) || 'dashboard';
   navigate(hash);

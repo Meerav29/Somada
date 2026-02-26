@@ -2,8 +2,8 @@
 export.xml
 export_cda.xml
 
-# Parsed output — regenerated from export.xml, contains personal data
-health_data.json
+# Parsed output — committed so Vercel can serve it; regenerate locally with parse_health.py
+# health_data.json
 
 # Python
 __pycache__/

@@ -1503,7 +1503,7 @@ async function handleFileUpload(input) {
 
     // Save phase — write parsed JSON to Supabase
     renderProgress(90, 'Saving to Supabase...');
-    if (!supabaseClient) throw { msg: 'Not signed in — please log in to save health data.', detail: null };
+    if (!currentUser) throw { msg: 'Not signed in — please log in before uploading.', detail: null };
     const { error } = await supabaseClient.from('health_data').upsert({ id: 1, data: result }, { onConflict: 'id' });
     if (error) throw { msg: 'Failed to save to Supabase', detail: error.message };
 

@@ -1283,14 +1283,14 @@ function renderSettings() {
       </div>
 
       <div class="settings-card">
-        <h3>Updating Your Data</h3>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">To refresh your health data, run the parser locally and redeploy:</p>
-        <ol style="font-size:12px;color:var(--muted);margin:0 0 0 16px;padding:0;line-height:2">
-          <li>Export from Apple Health → <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">export.xml</code></li>
-          <li>Run <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">python parse_health.py export.xml</code></li>
-          <li>Commit <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">health_data.json</code> and push</li>
-          <li>Vercel redeploys automatically</li>
-        </ol>
+        <h3>Update Health Data</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Export from Apple Health and upload here to refresh your dashboard with the latest data.</p>
+        <label class="upload-area" style="padding:20px 16px;font-size:12px">
+          <input type="file" accept=".xml" onchange="handleFileUpload(this)">
+          <svg viewBox="0 0 24 24" style="width:24px;height:24px;margin:0 auto 8px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Click or drag export.xml here
+        </label>
+        <div id="upload-status"></div>
       </div>
 
       <div class="settings-card">

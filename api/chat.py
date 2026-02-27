@@ -7,8 +7,24 @@ import urllib.error
 
 ROOT = pathlib.Path(__file__).parent.parent
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+
 
 def load_health_data():
+    if SUPABASE_URL and SUPABASE_ANON_KEY:
+        try:
+            url = f"{SUPABASE_URL}/rest/v1/health_data?select=data&limit=1"
+            req = urllib.request.Request(url, headers={
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+            })
+            with urllib.request.urlopen(req) as resp:
+                rows = json.loads(resp.read())
+                if rows:
+                    return rows[0]["data"]
+        except Exception:
+            pass
     health_file = ROOT / "health_data.json"
     if not health_file.exists():
         return None

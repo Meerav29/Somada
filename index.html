@@ -572,6 +572,43 @@ textarea::placeholder { color:var(--muted); }
 </main>
 
 <script>
+// ── Health Parser Constants ────────────────────────────────
+const HEALTH_METRIC_MAP = {
+  "HKQuantityTypeIdentifierStepCount": "steps",
+  "HKQuantityTypeIdentifierHeartRate": "heart_rate",
+  "HKQuantityTypeIdentifierRestingHeartRate": "resting_heart_rate",
+  "HKQuantityTypeIdentifierHeartRateVariabilitySDNN": "hrv",
+  "HKCategoryTypeIdentifierSleepAnalysis": "sleep",
+  "HKQuantityTypeIdentifierActiveEnergyBurned": "active_calories",
+  "HKQuantityTypeIdentifierAppleExerciseTime": "exercise_minutes",
+  "HKQuantityTypeIdentifierOxygenSaturation": "spo2",
+  "HKQuantityTypeIdentifierRespiratoryRate": "respiratory_rate",
+  "HKQuantityTypeIdentifierWalkingHeartRateAverage": "walking_hr",
+};
+
+const SLEEP_ASLEEP = new Set([
+  "HKCategoryValueSleepAnalysisAsleep",
+  "HKCategoryValueSleepAnalysisCore",
+  "HKCategoryValueSleepAnalysisDeep",
+  "HKCategoryValueSleepAnalysisREM",
+  "HKCategoryValueSleepAnalysisAsleepCore",
+  "HKCategoryValueSleepAnalysisAsleepDeep",
+  "HKCategoryValueSleepAnalysisAsleepREM",
+  "HKCategoryValueSleepAnalysisAsleepUnspecified",
+]);
+
+const LIFE_EVENTS = [
+  {"label": "Finals Week",    "start": "2024-12-09", "end": "2024-12-15", "color": "#ef4444", "icon": "📚"},
+  {"label": "Winter Break",   "start": "2024-12-16", "end": "2025-01-05", "color": "#22c55e", "icon": "🏖️"},
+  {"label": "Spring Break",   "start": "2025-03-08", "end": "2025-03-16", "color": "#22c55e", "icon": "✈️"},
+  {"label": "Finals Week",    "start": "2025-04-28", "end": "2025-05-05", "color": "#ef4444", "icon": "📚"},
+  {"label": "Summer Break",   "start": "2025-05-10", "end": "2025-08-20", "color": "#f59e0b", "icon": "☀️"},
+  {"label": "Fall Semester",  "start": "2025-08-25", "end": "2025-12-15", "color": "#8b5cf6", "icon": "🎓"},
+  {"label": "Finals Week",    "start": "2025-12-08", "end": "2025-12-14", "color": "#ef4444", "icon": "📚"},
+  {"label": "Winter Break",   "start": "2025-12-15", "end": "2026-01-10", "color": "#22c55e", "icon": "🏖️"},
+  {"label": "Spring Semester","start": "2026-01-12", "end": "2026-02-24", "color": "#8b5cf6", "icon": "🎓"},
+];
+
 // ── State ─────────────────────────────────────────────────
 let healthData = null;
 let charts = {};
@@ -1296,6 +1333,124 @@ async function doReparse() {
   }
 }
 
+// ── Browser-side Apple Health XML Parser ──────────────────
+function _getAttr(attrs, name) {
+  const m = attrs.match(new RegExp('\\b' + name + '="([^"]*)"'));
+  return m ? m[1] : null;
+}
+
+async function parseHealthXML(file, onProgress) {
+  onProgress(0, 'Reading file...');
+  const text = await file.text();
+  const total = text.length;
+
+  onProgress(3, 'Parsing records...');
+
+  // Accumulator: date → metric arrays + sleep_minutes
+  const raw = {};
+
+  const recordRe = /<Record\b([^>]*?)(?:\/>|>)/g;
+  let match;
+  let count = 0;
+
+  while ((match = recordRe.exec(text)) !== null) {
+    const attrs = match[1];
+    const type = _getAttr(attrs, 'type');
+    const metric = HEALTH_METRIC_MAP[type];
+    if (!metric) continue;
+
+    const startDate = _getAttr(attrs, 'startDate');
+    if (!startDate) continue;
+    const dateKey = startDate.slice(0, 10);
+
+    if (!raw[dateKey]) {
+      raw[dateKey] = {
+        steps: [], heart_rate: [], resting_heart_rate: [], hrv: [],
+        sleep_minutes: 0, active_calories: [], exercise_minutes: [],
+        spo2: [], respiratory_rate: [],
+      };
+    }
+
+    if (metric === 'sleep') {
+      const value = _getAttr(attrs, 'value');
+      if (SLEEP_ASLEEP.has(value)) {
+        const endDate = _getAttr(attrs, 'endDate');
+        if (endDate) {
+          const startMs = new Date(startDate.slice(0, 19)).getTime();
+          const endMs   = new Date(endDate.slice(0, 19)).getTime();
+          const mins = (endMs - startMs) / 60000;
+          if (mins > 0 && mins < 720) raw[dateKey].sleep_minutes += mins;
+        }
+      }
+    } else {
+      const value = parseFloat(_getAttr(attrs, 'value'));
+      if (!isNaN(value) && Array.isArray(raw[dateKey][metric])) {
+        raw[dateKey][metric].push(value);
+      }
+    }
+
+    count++;
+    if (count % 5000 === 0) {
+      const pct = 3 + Math.round((recordRe.lastIndex / total) * 82);
+      onProgress(pct, `Parsing records… ${count.toLocaleString()} processed`);
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  onProgress(85, 'Aggregating daily data...');
+  await new Promise(r => setTimeout(r, 0));
+
+  // Aggregate per-day
+  const aggregated = {};
+  for (const [dateKey, d] of Object.entries(raw).sort()) {
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    aggregated[dateKey] = {
+      date:              dateKey,
+      steps:             d.steps.length ? Math.round(d.steps.reduce((a,b)=>a+b,0)) : null,
+      heart_rate_avg:    d.heart_rate.length ? +avg(d.heart_rate).toFixed(1) : null,
+      heart_rate_min:    d.heart_rate.length ? +Math.min(...d.heart_rate).toFixed(1) : null,
+      heart_rate_max:    d.heart_rate.length ? +Math.max(...d.heart_rate).toFixed(1) : null,
+      resting_hr:        d.resting_heart_rate.length ? +avg(d.resting_heart_rate).toFixed(1) : null,
+      hrv:               d.hrv.length ? +avg(d.hrv).toFixed(1) : null,
+      sleep_hours:       d.sleep_minutes > 0 ? +(d.sleep_minutes / 60).toFixed(2) : null,
+      active_calories:   d.active_calories.length ? Math.round(d.active_calories.reduce((a,b)=>a+b,0)) : null,
+      exercise_minutes:  d.exercise_minutes.length ? Math.round(d.exercise_minutes.reduce((a,b)=>a+b,0)) : null,
+      spo2:              d.spo2.length ? +avg(d.spo2).toFixed(1) : null,
+    };
+  }
+
+  // Filter to last 8 months
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 8);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const filtered = Object.fromEntries(Object.entries(aggregated).filter(([k]) => k >= cutoffStr));
+
+  onProgress(90, 'Computing summary...');
+  await new Promise(r => setTimeout(r, 0));
+
+  // Summary stats
+  const allDays = Object.values(filtered);
+  const avgStat = vals => { const c = vals.filter(v => v != null); return c.length ? +(c.reduce((a,b)=>a+b,0)/c.length).toFixed(1) : null; };
+  const bestStepsDay = allDays.reduce((best, d) => (!best || (d.steps||0) > (best.steps||0)) ? d : best, null);
+  const summary = {
+    avg_steps:       avgStat(allDays.map(d => d.steps)),
+    avg_sleep_hours: avgStat(allDays.map(d => d.sleep_hours)),
+    avg_resting_hr:  avgStat(allDays.map(d => d.resting_hr)),
+    avg_hrv:         avgStat(allDays.map(d => d.hrv)),
+    best_sleep:      allDays.map(d=>d.sleep_hours).filter(v=>v!=null).reduce((a,b)=>Math.max(a,b), null),
+    worst_sleep:     allDays.map(d=>d.sleep_hours).filter(v=>v!=null).reduce((a,b)=>Math.min(a,b), null),
+    best_steps_day:  bestStepsDay ? bestStepsDay.date : null,
+    total_days:      allDays.length,
+  };
+
+  return {
+    daily: filtered,
+    summary,
+    events: LIFE_EVENTS,
+    generated_at: new Date().toISOString(),
+  };
+}
+
 async function handleFileUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1330,78 +1485,34 @@ async function handleFileUpload(input) {
     el.innerHTML = `
       <div>${label}</div>
       <div class="progress-wrap"><div class="progress-bar" id="u-bar" style="width:${pct}%"></div></div>
-      <div class="upload-detail" id="u-detail"></div>`;
+      <div class="upload-detail" id="u-detail">${pct}% · ${elapsed()}s elapsed</div>`;
   }
 
-  function updateDetail(pct) {
-    const d = document.getElementById('u-detail');
-    if (d) d.textContent = `${pct}% · ${elapsed()}s elapsed`;
-  }
-
-  // Upload phase
-  renderProgress(0, `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`);
   timerInterval = setInterval(() => {
     const bar = document.getElementById('u-bar');
+    const d = document.getElementById('u-detail');
     const pct = bar ? parseInt(bar.style.width) || 0 : 0;
-    updateDetail(pct);
+    if (d) d.textContent = `${pct}% · ${elapsed()}s elapsed`;
   }, 1000);
 
   try {
-    await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          const bar = document.getElementById('u-bar');
-          if (bar) bar.style.width = pct + '%';
-          updateDetail(pct);
-        }
-      };
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            data.ok ? resolve(data) : reject({ msg: 'Server rejected the file', detail: data.error });
-          } catch(e) { reject({ msg: 'Invalid response from server', detail: xhr.responseText }); }
-        } else {
-          reject({ msg: `Upload failed (HTTP ${xhr.status})`, detail: xhr.responseText });
-        }
-      };
-      xhr.onerror = () => reject({ msg: 'Network error — could not reach the server. Is it running?', detail: null });
-      xhr.open('POST', '/api/upload');
-      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-      xhr.setRequestHeader('X-Filename', file.name);
-      xhr.send(file);
+    // Parse phase — runs entirely in the browser
+    const result = await parseHealthXML(file, (pct, label) => {
+      renderProgress(Math.round(pct * 0.9), label);
     });
 
-    // Parse phase — indeterminate
-    el.innerHTML = `
-      <div>Parsing health data — this may take 2–3 min for large files</div>
-      <div class="progress-wrap"><div class="progress-bar indeterminate" id="u-bar"></div></div>
-      <div class="upload-detail" id="u-detail">0s elapsed</div>`;
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      const d = document.getElementById('u-detail');
-      if (d) d.textContent = `${elapsed()}s elapsed`;
-    }, 1000);
-
-    const reparseResp = await fetch('/api/reparse', { method: 'POST' });
-    if (!reparseResp.ok) throw { msg: `Server error during parse (HTTP ${reparseResp.status})`, detail: await reparseResp.text() };
-    const reparseData = await reparseResp.json();
+    // Save phase — write parsed JSON to Supabase
+    renderProgress(90, 'Saving to Supabase...');
+    if (!supabaseClient) throw { msg: 'Not signed in — please log in to save health data.', detail: null };
+    const { error } = await supabaseClient.from('health_data').upsert({ id: 1, data: result }, { onConflict: 'id' });
+    if (error) throw { msg: 'Failed to save to Supabase', detail: error.message };
 
     clearInterval(timerInterval);
 
-    if (reparseData.ok) {
-      const hr = await fetch('/api/health');
-      const hd = await hr.json();
-      if (hd.error) { showError('Data parsed but failed to load', hd.error); return; }
-      healthData = hd;
-      el.className = 'status-msg success';
-      el.textContent = `Done! Loaded in ${elapsed()}s — opening dashboard...`;
-      setTimeout(() => navigate('dashboard'), 800);
-    } else {
-      showError('Parsing failed — see details below', reparseData.error || 'Unknown error');
-    }
+    healthData = result;
+    el.className = 'status-msg success';
+    el.textContent = `Done! Parsed & saved in ${elapsed()}s — opening dashboard...`;
+    setTimeout(() => navigate('dashboard'), 800);
   } catch(e) {
     clearInterval(timerInterval);
     if (e && e.msg) showError(e.msg, e.detail);

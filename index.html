@@ -11,13 +11,12 @@
 
 /* ── Tokens ───────────────────────────────────────────────── */
 :root {
-  --bg:            #111318;
-  --sidebar-bg:    #0d1117;
-  --surface:       #1c1f26;
-  --surface2:      #23272f;
-  --border:        rgba(255,255,255,0.07);
-  --text:          #f1f5f9;
-  --muted:         #64748b;
+  --bg:            #080a0f;
+  --surface:       #111318;
+  --surface2:      #1c1f26;
+  --border:        rgba(255,255,255,0.06);
+  --text:          #f8fafc;
+  --muted:         #6b7280;
   --accent:        #6366f1;
   --accent-faint:  rgba(99,102,241,0.12);
   --accent-border: rgba(99,102,241,0.28);
@@ -25,32 +24,42 @@
   --red:           #f87171;
   --amber:         #fbbf24;
   --purple:        #a78bfa;
-  --grid:          rgba(255,255,255,0.022);
-  --shadow:        0 1px 3px rgba(0,0,0,0.35);
+  --shadow:        0 2px 8px rgba(0,0,0,0.5);
+  --card-steps:    #1e2a6e;
+  --card-sleep:    #3b1f6b;
+  --card-hrv:      #064e3b;
+  --card-hr:       #7f1d1d;
+  --card-spo2:     #78350f;
+  --card-neutral:  #1a1d24;
 }
 [data-theme="light"] {
-  --bg:            #f4f6f9;
-  --sidebar-bg:    #eef0f4;
+  --bg:            #f0f2f7;
   --surface:       #ffffff;
   --surface2:      #f1f5f9;
   --border:        rgba(0,0,0,0.07);
   --text:          #111827;
   --muted:         #9ca3af;
-  --accent:        #6366f1;
+  --accent:        #4f46e5;
   --accent-faint:  rgba(99,102,241,0.08);
   --accent-border: rgba(99,102,241,0.22);
   --green:         #059669;
   --red:           #dc2626;
   --amber:         #d97706;
   --purple:        #7c3aed;
-  --grid:          transparent;
-  --shadow:        0 1px 3px rgba(0,0,0,0.08);
+  --shadow:        0 2px 8px rgba(0,0,0,0.08);
+  --card-steps:    #312e81;
+  --card-sleep:    #4c1d95;
+  --card-hrv:      #064e3b;
+  --card-hr:       #991b1b;
+  --card-spo2:     #92400e;
+  --card-neutral:  #ffffff;
 }
 
 /* ── Reset ───────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
   font-family: 'Syne', sans-serif;
@@ -58,72 +67,57 @@ body {
   color: var(--text);
   transition: background 0.25s, color 0.25s;
 }
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
-}
 
-/* ── Sidebar ─────────────────────────────────────────────── */
-.sidebar {
-  width: 216px;
+/* ── Topbar ──────────────────────────────────────────────── */
+.topbar {
+  height: 56px;
   flex-shrink: 0;
-  height: 100vh;
   display: flex;
-  flex-direction: column;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  position: relative;
+  align-items: center;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   z-index: 10;
   transition: background 0.25s, border-color 0.25s;
+  gap: 8px;
 }
-.sidebar-top { flex: 1; overflow-y: auto; padding: 20px 12px 12px; }
-.sidebar-bottom { padding: 12px; border-top: 1px solid var(--border); transition: border-color 0.25s; }
-
-.brand { padding: 4px 8px 20px; }
-.brand-name {
-  font-size: 14px;
-  font-weight: 700;
+.topbar-brand {
+  font-size: 15px;
+  font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.2px;
+  letter-spacing: -0.4px;
+  margin-right: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   transition: color 0.25s;
-}
-.brand-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 2px;
-  letter-spacing: 0.3px;
 }
 .live-dot {
   display: inline-block;
-  width: 4px; height: 4px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--green);
-  margin-right: 4px;
   animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
-
-.nav-section { margin-bottom: 6px; }
-.nav-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8.5px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 8px 10px 4px;
-  opacity: 0.6;
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 7px;
   cursor: pointer;
   color: var(--muted);
@@ -132,93 +126,147 @@ body::before {
   transition: all 0.15s;
   user-select: none;
 }
-.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav-item svg { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav-item:hover { color: var(--text); background: var(--surface2); }
 .nav-item.active { color: var(--accent); background: var(--accent-faint); }
-.nav-item.active svg { stroke: var(--accent); }
-
 .theme-btn {
-  width: 100%;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  justify-content: center;
+  width: 34px; height: 34px;
   border-radius: 7px;
-  border: none;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  font-family: 'Syne', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
 }
-.theme-btn svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.theme-btn:hover { color: var(--text); background: var(--surface2); }
+.theme-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.theme-btn:hover { color: var(--text); background: var(--surface2); border-color: var(--accent-border); }
 
 /* ── Main area ───────────────────────────────────────────── */
-.main {
-  flex: 1;
-  height: 100vh;
-  overflow-y: auto;
-  position: relative;
-  z-index: 5;
-}
-#page-content { padding: 28px 32px; min-height: 100%; }
+.main { flex: 1; overflow-y: auto; position: relative; }
+#page-content { padding: 24px 32px; min-height: 100%; }
 
 /* ── Page header ─────────────────────────────────────────── */
-.page-header { margin-bottom: 24px; }
-.page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; transition: color 0.25s; }
-.page-sub { font-family: 'Syne', sans-serif; font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0; }
+.page-header { margin-bottom: 20px; }
+.page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; transition: color 0.25s; }
+.page-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
-/* ── Stat grid (dashboard cards) ─────────────────────────── */
-.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px 20px;
+/* ── Bento grid ──────────────────────────────────────────── */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: 160px 160px 210px;
+  grid-template-areas:
+    "steps  steps  sleep  hrv"
+    "steps  steps  hr     spo2"
+    "act    trend  trend  trend";
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.bento-steps    { grid-area: steps; }
+.bento-sleep    { grid-area: sleep; }
+.bento-hrv      { grid-area: hrv; }
+.bento-hr       { grid-area: hr; }
+.bento-spo2     { grid-area: spo2; }
+.bento-act      { grid-area: act; }
+.bento-trend    { grid-area: trend; }
+
+.bento-card {
+  border-radius: 16px;
+  padding: 20px 22px;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow);
-  transition: border-color 0.15s, background 0.25s;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  transition: transform 0.15s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.4);
 }
-.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--card-color,var(--accent)); opacity:0.75; }
-.stat-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0.2px; text-transform:uppercase; margin-bottom:8px; }
-.stat-value { font-size:30px; font-weight:700; color:var(--text); line-height:1; transition:color 0.25s; }
-.stat-unit { font-size:14px; color:var(--muted); margin-left:3px; font-weight:400; }
-.stat-sub { font-family:'Syne',sans-serif; font-size:11px; color:var(--muted); margin-top:6px; letter-spacing:0; }
+.bento-card:hover { transform: translateY(-2px); }
+.bento-steps    { background: var(--card-steps); }
+.bento-sleep    { background: var(--card-sleep); }
+.bento-hrv      { background: var(--card-hrv); }
+.bento-hr       { background: var(--card-hr); }
+.bento-spo2     { background: var(--card-spo2); }
+.bento-act      { background: var(--card-steps); }
+.bento-trend    { background: var(--card-neutral); border: 1px solid var(--border); color: var(--text); box-shadow: var(--shadow); }
 
-/* ── Stats row (page-level summary bar) ──────────────────── */
+.bento-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+.bento-trend .bento-label { color: var(--muted); opacity: 1; margin-bottom: 8px; }
+.bento-hero {
+  font-size: 54px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+  flex-shrink: 0;
+}
+.bento-unit {
+  font-size: 20px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+.bento-sub {
+  font-size: 11.5px;
+  opacity: 0.6;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.bento-delta {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: auto;
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bento-delta.up    { color: #6ee7b7; }
+.bento-delta.down  { color: #fca5a5; }
+.bento-delta.neutral { opacity: 0.5; }
+.bento-steps canvas { flex: 1; margin-top: 10px; min-height: 0; max-height: 90px; }
+.bento-trend canvas { flex: 1; margin-top: 4px; min-height: 0; max-height: 155px; }
+
+/* ── Stats row (inner pages) ────────────────────────────── */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   box-shadow: var(--shadow);
 }
-.stats-row-item {
-  background: var(--surface);
-  padding: 14px 16px;
-  transition: background 0.25s;
-}
-.stats-row-item .stat-label { margin-bottom: 6px; }
-.stats-row-item .stat-value { font-size: 20px; }
+.stats-row-item { background: var(--surface); padding: 16px 18px; transition: background 0.25s; }
+.stat-label { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px; }
+.stat-value { font-size:22px; font-weight:800; color:var(--text); line-height:1; transition:color 0.25s; }
+.stat-unit { font-size:13px; color:var(--muted); margin-left:3px; font-weight:400; }
+.stat-sub { font-size:11px; color:var(--muted); margin-top:5px; }
 
 /* ── Chart sections ──────────────────────────────────────── */
 .charts-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .chart-section { margin-bottom: 18px; }
 .chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .chart-title { font-size:14px; font-weight:700; color:var(--text); transition:color 0.25s; }
-.chart-meta { font-family:'Syne',sans-serif; font-size:11px; color:var(--muted); letter-spacing:0; }
+.chart-meta { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.3px; }
 .chart-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 16px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
@@ -228,37 +276,17 @@ body::before {
 .chart-box.sparkline { padding: 10px 14px; }
 .chart-box.sparkline canvas { max-height: 60px; }
 
-/* Dashboard sparkline grid */
-.sparkline-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
-.sparkline-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 15px 16px;
-  box-shadow: var(--shadow);
-  transition: background 0.25s, border-color 0.25s;
-}
-.sparkline-card .spark-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0.2px; text-transform:uppercase; margin-bottom:4px; }
-.sparkline-card .spark-value { font-size:21px; font-weight:700; color:var(--text); margin-bottom:8px; line-height:1; }
-.sparkline-card .spark-unit { font-size:12px; color:var(--muted); font-weight:400; margin-left:2px; }
-.sparkline-card .spark-delta { font-family:'Syne',sans-serif; font-size:11px; margin-top:6px; letter-spacing:0; }
-.spark-delta.up { color:var(--green); }
-.spark-delta.down { color:var(--red); }
-.spark-delta.neutral { color:var(--muted); }
-
 /* ── Life event legend ───────────────────────────────────── */
 .event-legend { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px; }
 .event-badge { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:500; border:1px solid; }
-
-/* Active event banner */
 .event-banner {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   font-size: 13px;
 }
 .event-banner-icon { font-size: 18px; }
@@ -270,23 +298,23 @@ body::before {
 .insight-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 18px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
 }
 .insight-card-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
-.insight-card-value { font-size:18px; font-weight:700; color:var(--text); margin-bottom:4px; }
-.insight-card-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+.insight-card-value { font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.insight-card-desc { font-size:12px; color:var(--muted); line-height:1.55; }
 
 /* ── Chat (Insights page) ────────────────────────────────── */
 .chat-container {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 340px);
+  height: calc(100vh - 300px);
   min-height: 520px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
@@ -357,7 +385,7 @@ textarea::placeholder { color:var(--muted); }
 .settings-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
@@ -378,7 +406,7 @@ textarea::placeholder { color:var(--muted); }
 .upload-area {
   display: block;
   border: 2px dashed var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 20px;
   text-align: center;
   margin-top: 12px;
@@ -431,13 +459,13 @@ textarea::placeholder { color:var(--muted); }
 .auth-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 36px 32px;
   width: 340px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.28);
 }
 .auth-logo { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1.5px; color:var(--muted); margin-bottom:20px; }
-.auth-title { font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.auth-title { font-size:22px; font-weight:800; color:var(--text); margin-bottom:4px; }
 .auth-sub { font-size:12px; color:var(--muted); margin-bottom:24px; }
 .auth-input {
   width:100%; box-sizing:border-box;
@@ -460,21 +488,26 @@ textarea::placeholder { color:var(--muted); }
 .auth-toggle button { background:none; border:none; color:var(--accent); font-family:'Syne',sans-serif; font-size:12px; cursor:pointer; padding:0 4px; text-decoration:underline; }
 .auth-divider { height:1px; background:var(--border); margin:0 0 16px; }
 
-/* ── User panel (sidebar) ────────────────────────────────── */
-.user-panel {
-  padding:10px 14px 6px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
+/* ── User pill (topbar) ──────────────────────────────────── */
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
 }
 .user-email {
-  display:block; font-family:'JetBrains Mono',monospace; font-size:9.5px;
-  color:var(--muted); letter-spacing:0.3px; margin-bottom:6px;
+  font-family:'JetBrains Mono',monospace; font-size:9.5px;
+  color:var(--muted); letter-spacing:0.3px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width: 160px;
 }
 .logout-btn {
-  width:100%; padding:5px 0; border-radius:6px; border:1px solid var(--border);
+  padding:4px 8px; border-radius:5px; border:1px solid var(--border);
   background:transparent; color:var(--muted); font-family:'Syne',sans-serif;
-  font-size:10px; cursor:pointer; letter-spacing:0.4px;
+  font-size:10px; cursor:pointer; letter-spacing:0.4px; white-space:nowrap;
   transition:border-color 0.15s, color 0.15s, background 0.15s;
 }
 .logout-btn:hover { border-color:var(--red); color:var(--red); background:rgba(248,113,113,0.06); }
@@ -488,61 +521,29 @@ textarea::placeholder { color:var(--muted); }
   <p style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">parsing wearable metrics...</p>
 </div>
 
-<!-- Sidebar -->
-<nav class="sidebar">
-  <div class="sidebar-top">
-    <div class="brand">
-      <div class="brand-name">Somada</div>
-      <div class="brand-sub"><span class="live-dot"></span>AMAZFIT · APPLE HEALTH</div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Overview</div>
-      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard
-      </div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Metrics</div>
-      <div class="nav-item" data-page="sleep" onclick="navigate('sleep')">
-        <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        Sleep
-      </div>
-      <div class="nav-item" data-page="activity" onclick="navigate('activity')">
-        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Activity
-      </div>
-      <div class="nav-item" data-page="recovery" onclick="navigate('recovery')">
-        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        Heart & Recovery
-      </div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">AI</div>
-      <div class="nav-item" data-page="insights" onclick="navigate('insights')">
-        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Insights
-      </div>
-    </div>
+<!-- Topbar -->
+<nav class="topbar">
+  <div class="topbar-brand">
+    <span class="live-dot"></span>
+    Somada
   </div>
-
-  <div class="sidebar-bottom">
-    <div class="user-panel" id="user-panel" style="display:none">
+  <div class="topbar-nav">
+    <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">Dashboard</div>
+    <div class="nav-item" data-page="sleep" onclick="navigate('sleep')">Sleep</div>
+    <div class="nav-item" data-page="activity" onclick="navigate('activity')">Activity</div>
+    <div class="nav-item" data-page="recovery" onclick="navigate('recovery')">Recovery</div>
+    <div class="nav-item" data-page="insights" onclick="navigate('insights')">Insights</div>
+  </div>
+  <div class="topbar-actions">
+    <div class="nav-item" data-page="settings" onclick="navigate('settings')">Settings</div>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle theme">
+      <svg id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg id="icon-moon" viewBox="0 0 24 24" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <div class="user-pill" id="user-panel" style="display:none">
       <span class="user-email" id="user-email"></span>
       <button class="logout-btn" onclick="handleLogout()">SIGN OUT</button>
     </div>
-    <div class="nav-item" data-page="settings" onclick="navigate('settings')" style="margin-bottom:4px">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
-    </div>
-    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">
-      <svg id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      <svg id="icon-moon" viewBox="0 0 24 24" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <span id="theme-label">Light mode</span>
-    </button>
   </div>
 </nav>
 
@@ -628,9 +629,10 @@ function initTheme() {
 }
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('icon-sun').style.display  = theme === 'dark'  ? '' : 'none';
-  document.getElementById('icon-moon').style.display = theme === 'light' ? '' : 'none';
-  document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  const sun = document.getElementById('icon-sun');
+  const moon = document.getElementById('icon-moon');
+  if (sun)  sun.style.display  = theme === 'dark'  ? '' : 'none';
+  if (moon) moon.style.display = theme === 'light' ? '' : 'none';
   if (healthData) renderPage(currentPage);
 }
 function toggleTheme() {
@@ -817,7 +819,6 @@ function makeChart(id, type, labels, datasets, opts = {}) {
 function renderDashboard() {
   const s = healthData.summary || {};
   const dark = isDark();
-  const d14 = daily(14);
   const d30 = daily(30);
   const d60 = daily(60);
 
@@ -830,6 +831,8 @@ function renderDashboard() {
   const prev30Hr = avg(d60.slice(0,30).map(d=>d.resting_hr));
   const cur30Hrv = avg(d30.map(d=>d.hrv));
   const prev30Hrv = avg(d60.slice(0,30).map(d=>d.hrv));
+  const cur30Spo2 = avg(d30.map(d=>d.spo2).filter(Boolean));
+  const cur30Ex   = avg(d30.map(d=>d.exercise_minutes).filter(Boolean));
 
   function deltaHTML(cur, prev, invert=false) {
     if (cur==null||prev==null) return '';
@@ -837,7 +840,7 @@ function renderDashboard() {
     const better = invert ? d < 0 : d > 0;
     const cls = better ? 'up' : 'down';
     const arrow = d >= 0 ? '▲' : '▼';
-    return `<div class="spark-delta ${cls}">${arrow} ${Math.abs(d).toFixed(1)}% vs prev 30d</div>`;
+    return `<div class="bento-delta ${cls}">${arrow} ${Math.abs(d).toFixed(1)}% vs prev 30d</div>`;
   }
 
   const activeEvent = getActiveEvent();
@@ -855,58 +858,50 @@ function renderDashboard() {
   document.getElementById('page-content').innerHTML = `
     <div class="page-header">
       <div class="page-title">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
-      <div class="page-sub">${s.total_days||0} days of data tracked</div>
+      <div class="page-sub">${s.total_days||0} days of data · all-time averages</div>
     </div>
 
     ${eventBanner}
 
-    <div class="stat-grid">
-      <div class="stat-card" style="--card-color:#6366f1">
-        <div class="stat-label">Avg Daily Steps</div>
-        <div class="stat-value">${s.avg_steps?(s.avg_steps/1000).toFixed(1):'–'}<span class="stat-unit">k</span></div>
-        <div class="stat-sub">${s.total_days||'–'} days tracked</div>
-      </div>
-      <div class="stat-card" style="--card-color:#a78bfa">
-        <div class="stat-label">Avg Sleep</div>
-        <div class="stat-value">${fmt(s.avg_sleep_hours,1)}<span class="stat-unit">hrs</span></div>
-        <div class="stat-sub">best: ${fmt(s.best_sleep,1)}h</div>
-      </div>
-      <div class="stat-card" style="--card-color:#f87171">
-        <div class="stat-label">Avg Resting HR</div>
-        <div class="stat-value">${fmt(s.avg_resting_hr,0)}<span class="stat-unit">bpm</span></div>
-        <div class="stat-sub">lower is better</div>
-      </div>
-      <div class="stat-card" style="--card-color:#34d399">
-        <div class="stat-label">Avg HRV</div>
-        <div class="stat-value">${fmt(s.avg_hrv,0)}<span class="stat-unit">ms</span></div>
-        <div class="stat-sub">higher is better</div>
-      </div>
-    </div>
-
-    <div class="sparkline-grid">
-      <div class="sparkline-card">
-        <div class="spark-label">Steps · last 30d</div>
-        <div class="spark-value">${cur30Steps?(cur30Steps/1000).toFixed(1):'–'}<span class="spark-unit">k/day</span></div>
-        <canvas id="spark-steps" height="80"></canvas>
+    <div class="bento-grid">
+      <div class="bento-card bento-steps">
+        <div class="bento-label">Avg Daily Steps</div>
+        <div class="bento-hero">${s.avg_steps?(s.avg_steps/1000).toFixed(1):'–'}<span class="bento-unit">k</span></div>
+        <div class="bento-sub">${s.total_days||'–'} days tracked</div>
+        <canvas id="spark-steps" height="60"></canvas>
         ${deltaHTML(cur30Steps,prev30Steps)}
       </div>
-      <div class="sparkline-card">
-        <div class="spark-label">Sleep · last 30d</div>
-        <div class="spark-value">${fmt(cur30Sleep,1)}<span class="spark-unit">hrs</span></div>
-        <canvas id="spark-sleep" height="80"></canvas>
+      <div class="bento-card bento-sleep">
+        <div class="bento-label">Avg Sleep</div>
+        <div class="bento-hero">${fmt(s.avg_sleep_hours,1)}<span class="bento-unit">h</span></div>
+        <div class="bento-sub">best: ${fmt(s.best_sleep,1)}h</div>
         ${deltaHTML(cur30Sleep,prev30Sleep)}
       </div>
-      <div class="sparkline-card">
-        <div class="spark-label">Resting HR · last 30d</div>
-        <div class="spark-value">${fmt(cur30Hr,0)}<span class="spark-unit">bpm</span></div>
-        <canvas id="spark-hr" height="80"></canvas>
+      <div class="bento-card bento-hrv">
+        <div class="bento-label">Avg HRV</div>
+        <div class="bento-hero">${fmt(s.avg_hrv,0)}<span class="bento-unit">ms</span></div>
+        <div class="bento-sub">higher is better</div>
+        ${deltaHTML(cur30Hrv,prev30Hrv)}
+      </div>
+      <div class="bento-card bento-hr">
+        <div class="bento-label">Resting HR</div>
+        <div class="bento-hero">${fmt(s.avg_resting_hr,0)}<span class="bento-unit">bpm</span></div>
+        <div class="bento-sub">lower is better</div>
         ${deltaHTML(cur30Hr,prev30Hr,true)}
       </div>
-      <div class="sparkline-card">
-        <div class="spark-label">HRV · last 30d</div>
-        <div class="spark-value">${fmt(cur30Hrv,0)}<span class="spark-unit">ms</span></div>
-        <canvas id="spark-hrv" height="80"></canvas>
-        ${deltaHTML(cur30Hrv,prev30Hrv)}
+      <div class="bento-card bento-spo2">
+        <div class="bento-label">SpO2</div>
+        <div class="bento-hero">${fmt(cur30Spo2,1)}<span class="bento-unit">%</span></div>
+        <div class="bento-sub">avg last 30d</div>
+      </div>
+      <div class="bento-card bento-act">
+        <div class="bento-label">Exercise</div>
+        <div class="bento-hero">${fmt(cur30Ex,0)}<span class="bento-unit">min</span></div>
+        <div class="bento-sub">avg last 30d</div>
+      </div>
+      <div class="bento-card bento-trend">
+        <div class="bento-label">Sleep · 6 months</div>
+        <canvas id="db-sleep"></canvas>
       </div>
     </div>
 
@@ -914,32 +909,28 @@ function renderDashboard() {
 
     <div class="charts-grid-2">
       <div class="chart-section">
-        <div class="chart-header"><span class="chart-title">Sleep (6 months)</span><span class="chart-meta">daily · hours</span></div>
-        <div class="chart-box"><canvas id="db-sleep"></canvas></div>
-      </div>
-      <div class="chart-section">
         <div class="chart-header"><span class="chart-title">Steps (6 months)</span><span class="chart-meta">daily · count</span></div>
         <div class="chart-box"><canvas id="db-steps"></canvas></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-header"><span class="chart-title">HRV (6 months)</span><span class="chart-meta">daily · ms</span></div>
+        <div class="chart-box"><canvas id="db-hrv"></canvas></div>
       </div>
     </div>
   `;
 
-  // Sparklines
+  // Sparkline inside steps bento card
   const sp = {spark:true};
   const stepsArr = getDailyArray('steps',30);
-  makeChart('spark-steps','bar',stepsArr.labels,[{data:stepsArr.values,backgroundColor:dark?'rgba(99,102,241,0.5)':'rgba(99,102,241,0.4)',borderColor:'transparent',borderRadius:1}],{...sp});
-  const sleepArr = getDailyArray('sleep_hours',30);
-  makeChart('spark-sleep','line',sleepArr.labels,[{data:sleepArr.values,borderColor:'#a78bfa',backgroundColor:'transparent'}],{...sp});
-  const hrArr = getDailyArray('resting_hr',30);
-  makeChart('spark-hr','line',hrArr.labels,[{data:hrArr.values,borderColor:'#f87171',backgroundColor:'transparent'}],{...sp});
-  const hrvArr = getDailyArray('hrv',30);
-  makeChart('spark-hrv','line',hrvArr.labels,[{data:hrvArr.values,borderColor:'#34d399',backgroundColor:'transparent'}],{...sp});
+  makeChart('spark-steps','bar',stepsArr.labels,[{data:stepsArr.values,backgroundColor:'rgba(255,255,255,0.35)',borderColor:'transparent',borderRadius:2}],{...sp});
 
   // Overview charts
   const sleep6 = getDailyArray('sleep_hours');
-  makeChart('db-sleep','line',sleep6.labels,[{label:'Sleep',data:sleep6.values,borderColor:'#a78bfa',backgroundColor:dark?'rgba(167,139,250,0.07)':'rgba(167,139,250,0.09)',fill:true}],{yLabel:'hrs'});
+  makeChart('db-sleep','line',sleep6.labels,[{label:'Sleep',data:sleep6.values,borderColor:'rgba(167,139,250,0.9)',backgroundColor:'rgba(167,139,250,0.08)',fill:true}],{yLabel:'hrs'});
   const steps6 = getDailyArray('steps');
-  makeChart('db-steps','bar',steps6.labels,[{label:'Steps',data:steps6.values,backgroundColor:dark?'rgba(99,102,241,0.35)':'rgba(99,102,241,0.2)',borderColor:dark?'rgba(99,102,241,0.7)':'rgba(99,102,241,0.45)',borderRadius:2}],{yLabel:'steps'});
+  makeChart('db-steps','bar',steps6.labels,[{label:'Steps',data:steps6.values,backgroundColor:dark?'rgba(99,102,241,0.4)':'rgba(99,102,241,0.25)',borderColor:dark?'rgba(99,102,241,0.75)':'rgba(99,102,241,0.5)',borderRadius:2}],{yLabel:'steps'});
+  const hrv6 = getDailyArray('hrv');
+  makeChart('db-hrv','line',hrv6.labels,[{label:'HRV',data:hrv6.values,borderColor:'#34d399',backgroundColor:dark?'rgba(52,211,153,0.07)':'rgba(52,211,153,0.09)',fill:true}],{yLabel:'ms'});
 }
 
 // ── PAGE: Sleep ───────────────────────────────────────────

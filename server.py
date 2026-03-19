@@ -1,5 +1,5 @@
 """
-Health Dashboard Backend
+Somada Backend
 Serves health data and proxies Claude and Gemini APIs for the AI chat.
 Usage: python server.py
 """
@@ -30,7 +30,7 @@ load_env()
 
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-HEALTH_DATA_FILE = "health_data.json"
+HEALTH_DATA_FILE = "health_data.json"   
 
 def load_health_data():
     if not os.path.exists(HEALTH_DATA_FILE):
@@ -271,7 +271,7 @@ if __name__ == "__main__":
     claude_status = "configured" if CLAUDE_API_KEY else "NOT SET"
     gemini_status = "configured" if GEMINI_API_KEY else "NOT SET"
     print(f"""
-Health Dashboard Server
+Somada Server
 =======================
 Starting on http://localhost:{port}
 

@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meerav · Health Intelligence</title>
+<title>Somada</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Tokens ───────────────────────────────────────────────── */
 :root {
-  --bg:            #111318;
-  --sidebar-bg:    #0d1117;
-  --surface:       #1c1f26;
-  --surface2:      #23272f;
-  --border:        rgba(255,255,255,0.07);
-  --text:          #f1f5f9;
-  --muted:         #64748b;
+  --bg:            #080a0f;
+  --surface:       #111318;
+  --surface2:      #1c1f26;
+  --border:        rgba(255,255,255,0.06);
+  --text:          #f8fafc;
+  --muted:         #6b7280;
   --accent:        #6366f1;
   --accent-faint:  rgba(99,102,241,0.12);
   --accent-border: rgba(99,102,241,0.28);
@@ -24,105 +24,100 @@
   --red:           #f87171;
   --amber:         #fbbf24;
   --purple:        #a78bfa;
-  --grid:          rgba(255,255,255,0.022);
-  --shadow:        0 1px 3px rgba(0,0,0,0.35);
+  --shadow:        0 2px 8px rgba(0,0,0,0.5);
+  --card-steps:    #1e2a6e;
+  --card-sleep:    #3b1f6b;
+  --card-hrv:      #064e3b;
+  --card-hr:       #7f1d1d;
+  --card-spo2:     #78350f;
+  --card-neutral:  #1a1d24;
 }
 [data-theme="light"] {
-  --bg:            #f4f6f9;
-  --sidebar-bg:    #eef0f4;
+  --bg:            #f0f2f7;
   --surface:       #ffffff;
   --surface2:      #f1f5f9;
   --border:        rgba(0,0,0,0.07);
   --text:          #111827;
   --muted:         #9ca3af;
-  --accent:        #6366f1;
+  --accent:        #4f46e5;
   --accent-faint:  rgba(99,102,241,0.08);
   --accent-border: rgba(99,102,241,0.22);
   --green:         #059669;
   --red:           #dc2626;
   --amber:         #d97706;
   --purple:        #7c3aed;
-  --grid:          transparent;
-  --shadow:        0 1px 3px rgba(0,0,0,0.08);
+  --shadow:        0 2px 8px rgba(0,0,0,0.08);
+  --card-steps:    #312e81;
+  --card-sleep:    #4c1d95;
+  --card-hrv:      #064e3b;
+  --card-hr:       #991b1b;
+  --card-spo2:     #92400e;
+  --card-neutral:  #ffffff;
 }
 
 /* ── Reset ───────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', sans-serif;
   background: var(--bg);
   color: var(--text);
   transition: background 0.25s, color 0.25s;
 }
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
-}
 
-/* ── Sidebar ─────────────────────────────────────────────── */
-.sidebar {
-  width: 216px;
+/* ── Topbar ──────────────────────────────────────────────── */
+.topbar {
+  height: 56px;
   flex-shrink: 0;
-  height: 100vh;
   display: flex;
-  flex-direction: column;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  position: relative;
+  align-items: center;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   z-index: 10;
   transition: background 0.25s, border-color 0.25s;
+  gap: 8px;
 }
-.sidebar-top { flex: 1; overflow-y: auto; padding: 20px 12px 12px; }
-.sidebar-bottom { padding: 12px; border-top: 1px solid var(--border); transition: border-color 0.25s; }
-
-.brand { padding: 4px 8px 20px; }
-.brand-name {
-  font-size: 14px;
-  font-weight: 700;
+.topbar-brand {
+  font-size: 15px;
+  font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.2px;
+  letter-spacing: -0.4px;
+  margin-right: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   transition: color 0.25s;
-}
-.brand-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 2px;
-  letter-spacing: 0.3px;
 }
 .live-dot {
   display: inline-block;
-  width: 4px; height: 4px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--green);
-  margin-right: 4px;
   animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
-
-.nav-section { margin-bottom: 6px; }
-.nav-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8.5px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 8px 10px 4px;
-  opacity: 0.6;
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 7px;
   cursor: pointer;
   color: var(--muted);
@@ -131,93 +126,147 @@ body::before {
   transition: all 0.15s;
   user-select: none;
 }
-.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav-item svg { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav-item:hover { color: var(--text); background: var(--surface2); }
 .nav-item.active { color: var(--accent); background: var(--accent-faint); }
-.nav-item.active svg { stroke: var(--accent); }
-
 .theme-btn {
-  width: 100%;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  justify-content: center;
+  width: 34px; height: 34px;
   border-radius: 7px;
-  border: none;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  font-family: 'Syne', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
 }
-.theme-btn svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.theme-btn:hover { color: var(--text); background: var(--surface2); }
+.theme-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.theme-btn:hover { color: var(--text); background: var(--surface2); border-color: var(--accent-border); }
 
 /* ── Main area ───────────────────────────────────────────── */
-.main {
-  flex: 1;
-  height: 100vh;
-  overflow-y: auto;
-  position: relative;
-  z-index: 5;
-}
-#page-content { padding: 28px 32px; min-height: 100%; }
+.main { flex: 1; overflow-y: auto; position: relative; }
+#page-content { padding: 24px 32px; min-height: 100%; }
 
 /* ── Page header ─────────────────────────────────────────── */
-.page-header { margin-bottom: 24px; }
-.page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; transition: color 0.25s; }
-.page-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.page-header { margin-bottom: 20px; }
+.page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; transition: color 0.25s; }
+.page-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
-/* ── Stat grid (dashboard cards) ─────────────────────────── */
-.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
+/* ── Bento grid ──────────────────────────────────────────── */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: 160px 160px 210px;
+  grid-template-areas:
+    "steps  steps  sleep  hrv"
+    "steps  steps  hr     spo2"
+    "act    trend  trend  trend";
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.bento-steps    { grid-area: steps; }
+.bento-sleep    { grid-area: sleep; }
+.bento-hrv      { grid-area: hrv; }
+.bento-hr       { grid-area: hr; }
+.bento-spo2     { grid-area: spo2; }
+.bento-act      { grid-area: act; }
+.bento-trend    { grid-area: trend; }
+
+.bento-card {
+  border-radius: 16px;
+  padding: 20px 22px;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow);
-  transition: border-color 0.15s, background 0.25s;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  transition: transform 0.15s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.4);
 }
-.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--card-color,var(--accent)); opacity:0.75; }
-.stat-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px; }
-.stat-value { font-size:24px; font-weight:700; color:var(--text); line-height:1; transition:color 0.25s; }
-.stat-unit { font-size:11px; color:var(--muted); margin-left:3px; font-weight:400; }
-.stat-sub { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); margin-top:6px; }
+.bento-card:hover { transform: translateY(-2px); }
+.bento-steps    { background: var(--card-steps); }
+.bento-sleep    { background: var(--card-sleep); }
+.bento-hrv      { background: var(--card-hrv); }
+.bento-hr       { background: var(--card-hr); }
+.bento-spo2     { background: var(--card-spo2); }
+.bento-act      { background: var(--card-steps); }
+.bento-trend    { background: var(--card-neutral); border: 1px solid var(--border); color: var(--text); box-shadow: var(--shadow); }
 
-/* ── Stats row (page-level summary bar) ──────────────────── */
+.bento-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+.bento-trend .bento-label { color: var(--muted); opacity: 1; margin-bottom: 8px; }
+.bento-hero {
+  font-size: 54px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+  flex-shrink: 0;
+}
+.bento-unit {
+  font-size: 20px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+.bento-sub {
+  font-size: 11.5px;
+  opacity: 0.6;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.bento-delta {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: auto;
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bento-delta.up    { color: #6ee7b7; }
+.bento-delta.down  { color: #fca5a5; }
+.bento-delta.neutral { opacity: 0.5; }
+.bento-steps canvas { flex: 1; margin-top: 10px; min-height: 0; max-height: 90px; }
+.bento-trend canvas { flex: 1; margin-top: 4px; min-height: 0; max-height: 155px; }
+
+/* ── Stats row (inner pages) ────────────────────────────── */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   box-shadow: var(--shadow);
 }
-.stats-row-item {
-  background: var(--surface);
-  padding: 14px 16px;
-  transition: background 0.25s;
-}
-.stats-row-item .stat-label { margin-bottom: 6px; }
-.stats-row-item .stat-value { font-size: 20px; }
+.stats-row-item { background: var(--surface); padding: 16px 18px; transition: background 0.25s; }
+.stat-label { font-family:'Inter',sans-serif; font-size:10px; font-weight:500; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px; }
+.stat-value { font-size:22px; font-weight:800; color:var(--text); line-height:1; transition:color 0.25s; }
+.stat-unit { font-size:13px; color:var(--muted); margin-left:3px; font-weight:400; }
+.stat-sub { font-size:11px; color:var(--muted); margin-top:5px; }
 
 /* ── Chart sections ──────────────────────────────────────── */
 .charts-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .chart-section { margin-bottom: 18px; }
 .chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-.chart-title { font-size:12px; font-weight:600; color:var(--text); transition:color 0.25s; }
-.chart-meta { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); }
+.chart-title { font-size:14px; font-weight:700; color:var(--text); transition:color 0.25s; }
+.chart-meta { font-family:'Inter',sans-serif; font-size:10px; color:var(--muted); letter-spacing:0.3px; }
 .chart-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 16px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
@@ -227,65 +276,46 @@ body::before {
 .chart-box.sparkline { padding: 10px 14px; }
 .chart-box.sparkline canvas { max-height: 60px; }
 
-/* Dashboard sparkline grid */
-.sparkline-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
-.sparkline-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  box-shadow: var(--shadow);
-  transition: background 0.25s, border-color 0.25s;
-}
-.sparkline-card .spark-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:4px; }
-.sparkline-card .spark-value { font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px; line-height:1; }
-.sparkline-card .spark-unit { font-size:10px; color:var(--muted); font-weight:400; margin-left:2px; }
-.sparkline-card .spark-delta { font-family:'JetBrains Mono',monospace; font-size:9px; margin-top:6px; }
-.spark-delta.up { color:var(--green); }
-.spark-delta.down { color:var(--red); }
-.spark-delta.neutral { color:var(--muted); }
-
 /* ── Life event legend ───────────────────────────────────── */
 .event-legend { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px; }
 .event-badge { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:500; border:1px solid; }
-
-/* Active event banner */
 .event-banner {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   font-size: 13px;
 }
 .event-banner-icon { font-size: 18px; }
 .event-banner-text strong { font-weight: 600; }
-.event-banner-text span { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; font-family: 'JetBrains Mono', monospace; }
+.event-banner-text span { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; font-family: 'Inter', sans-serif; }
 
 /* ── Insight cards ───────────────────────────────────────── */
 .insights-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
 .insight-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 18px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
 }
-.insight-card-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
-.insight-card-value { font-size:18px; font-weight:700; color:var(--text); margin-bottom:4px; }
-.insight-card-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+.insight-card-label { font-family:'Inter',sans-serif; font-size:9px; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.insight-card-value { font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.insight-card-desc { font-size:12px; color:var(--muted); line-height:1.55; }
 
 /* ── Chat (Insights page) ────────────────────────────────── */
 .chat-container {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  height: 480px;
+  height: calc(100vh - 300px);
+  min-height: 520px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
 }
@@ -300,7 +330,7 @@ body::before {
 }
 .chat-top h3 { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .ai-badge {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
   font-size: 8px;
   background: var(--accent-faint);
   color: var(--accent);
@@ -311,7 +341,7 @@ body::before {
   transition: all 0.2s;
 }
 .provider-toggle { display:flex; gap:3px; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:3px; transition: background 0.25s, border-color 0.25s; }
-.provider-btn { flex:1; padding:4px 10px; border-radius:5px; border:none; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.5px; cursor:pointer; background:transparent; color:var(--muted); transition:all 0.15s; }
+.provider-btn { flex:1; padding:4px 10px; border-radius:5px; border:none; font-family:'Inter',sans-serif; font-size:9px; letter-spacing:0.5px; cursor:pointer; background:transparent; color:var(--muted); transition:all 0.15s; }
 .provider-btn.active { background:var(--surface); border:1px solid var(--border); box-shadow:0 1px 2px rgba(0,0,0,0.12); }
 .provider-btn.active.claude { color:var(--accent); }
 .provider-btn.active.gemini { color:var(--green); }
@@ -320,12 +350,18 @@ body::before {
 .message { display:flex; gap:8px; animation:fadeUp 0.2s ease; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
 .message.user { flex-direction:row-reverse; }
-.avatar { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
+.avatar { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; flex-shrink:0; font-family:'Inter',sans-serif; }
 .avatar.ai { background:var(--accent); color:#fff; }
 .avatar.user-av { background:var(--surface2); border:1px solid var(--border); color:var(--muted); }
-.bubble { max-width:85%; padding:9px 13px; border-radius:10px; font-size:12.5px; line-height:1.6; transition:background 0.25s, border-color 0.25s; }
+.bubble { max-width:85%; padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.65; transition:background 0.25s, border-color 0.25s; }
 .message.ai   .bubble { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-top-left-radius:3px; }
 .message.user .bubble { background:var(--accent-faint); border:1px solid var(--accent-border); color:var(--text); border-top-right-radius:3px; }
+.message.ai .bubble p { margin:0 0 8px; }
+.message.ai .bubble p:last-child { margin-bottom:0; }
+.message.ai .bubble ol, .message.ai .bubble ul { margin:4px 0 8px 18px; padding:0; }
+.message.ai .bubble li { margin-bottom:5px; }
+.message.ai .bubble strong { font-weight:700; color:var(--text); }
+.message.ai .bubble em { font-style:italic; color:var(--muted); }
 .typing { display:flex; gap:4px; padding:2px 0; align-items:center; }
 .typing span { width:5px; height:5px; border-radius:50%; background:var(--muted); animation:bounce 1.2s infinite; }
 .typing span:nth-child(2){animation-delay:0.2s} .typing span:nth-child(3){animation-delay:0.4s}
@@ -333,9 +369,9 @@ body::before {
 .chat-input-area { padding:12px 14px; border-top:1px solid var(--border); flex-shrink:0; transition:border-color 0.25s; }
 .input-row { display:flex; gap:8px; align-items:flex-end; }
 .suggestions { display:flex; flex-direction:column; gap:5px; padding:10px 14px 0; }
-.suggestion { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:7px 10px; font-size:11px; color:var(--muted); cursor:pointer; text-align:left; font-family:'Syne',sans-serif; transition:border-color 0.15s, color 0.15s, background 0.15s; }
+.suggestion { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:7px 10px; font-size:11px; color:var(--muted); cursor:pointer; text-align:left; font-family:'Inter',sans-serif; transition:border-color 0.15s, color 0.15s, background 0.15s; }
 .suggestion:hover { border-color:var(--accent-border); color:var(--accent); background:var(--accent-faint); }
-textarea { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 12px; color:var(--text); font-family:'Syne',sans-serif; font-size:12.5px; resize:none; height:40px; max-height:120px; outline:none; overflow-y:hidden; transition:border-color 0.15s, background 0.25s, color 0.25s; }
+textarea { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 12px; color:var(--text); font-family:'Inter',sans-serif; font-size:12.5px; resize:none; height:40px; max-height:120px; outline:none; overflow-y:hidden; transition:border-color 0.15s, background 0.25s, color 0.25s; }
 textarea:focus { border-color:var(--accent-border); }
 textarea::placeholder { color:var(--muted); }
 .send-btn { width:40px; height:40px; border-radius:8px; background:var(--accent); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:opacity 0.15s, transform 0.1s; }
@@ -349,7 +385,7 @@ textarea::placeholder { color:var(--muted); }
 .settings-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px;
   box-shadow: var(--shadow);
   transition: background 0.25s, border-color 0.25s;
@@ -357,19 +393,20 @@ textarea::placeholder { color:var(--muted); }
 .settings-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
 .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .settings-row:last-child { border-bottom: none; }
-.settings-row-label { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.3px; }
+.settings-row-label { color: var(--muted); font-family: 'Inter', sans-serif; font-size: 10px; letter-spacing: 0.3px; }
 .settings-row-value { font-weight: 600; color: var(--text); font-size: 12px; }
 .settings-row-value.good { color: var(--green); }
 .settings-row-value.bad { color: var(--red); }
-.btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
 .btn:hover { border-color: var(--accent-border); background: var(--accent-faint); color: var(--accent); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
 .btn.primary:hover { opacity: 0.85; }
 .btn svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .btn-group { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .upload-area {
+  display: block;
   border: 2px dashed var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 20px;
   text-align: center;
   margin-top: 12px;
@@ -380,14 +417,20 @@ textarea::placeholder { color:var(--muted); }
 }
 .upload-area:hover { border-color: var(--accent-border); color: var(--accent); background: var(--accent-faint); }
 .upload-area input { display: none; }
-.key-status { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.key-status { display: flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif; font-size: 10px; }
 .key-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .key-dot.set { background: var(--green); }
 .key-dot.unset { background: var(--red); }
-.status-msg { margin-top: 12px; padding: 10px 12px; border-radius: 7px; font-size: 12px; font-family: 'JetBrains Mono', monospace; display: none; }
+.status-msg { margin-top: 12px; padding: 10px 12px; border-radius: 7px; font-size: 12px; font-family: 'Inter', sans-serif; display: none; }
 .status-msg.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: var(--green); display: block; }
 .status-msg.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--red); display: block; }
 .status-msg.loading { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); display: block; }
+.progress-wrap { background: var(--border); border-radius: 4px; height: 5px; overflow: hidden; margin: 8px 0 4px; }
+.progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s ease; }
+.progress-bar.indeterminate { width: 30%; animation: indeterminate 1.6s ease-in-out infinite; }
+@keyframes indeterminate { 0% { margin-left: 0%; } 50% { margin-left: 50%; } 100% { margin-left: 70%; } }
+.upload-detail { font-size: 10px; color: var(--muted); margin-top: 4px; }
+.upload-error-detail { margin-top: 8px; padding: 8px; background: rgba(248,113,113,0.08); border-radius: 5px; font-size: 10px; max-height: 140px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
 
 /* ── Loading overlay ─────────────────────────────────────── */
 .loading-overlay { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; gap:14px; transition:background 0.25s; }
@@ -402,8 +445,72 @@ textarea::placeholder { color:var(--muted); }
 ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
 .empty { text-align:center; padding:48px 20px; color:var(--muted); }
 .empty h3 { font-size:16px; color:var(--text); margin-bottom:8px; }
-.empty code { font-family:'JetBrains Mono',monospace; background:var(--surface2); padding:2px 6px; border-radius:4px; font-size:11px; color:var(--accent); }
+.empty code { font-family:'Inter',sans-serif; background:var(--surface2); padding:2px 6px; border-radius:4px; font-size:11px; color:var(--accent); }
 .divider { height:1px; background:var(--border); margin:20px 0; }
+
+/* ── Auth ────────────────────────────────────────────────── */
+.auth-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+  transition: background 0.25s;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 32px;
+  width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+}
+.auth-logo { font-family:'Inter',sans-serif; font-size:9px; letter-spacing:1.5px; color:var(--muted); margin-bottom:20px; }
+.auth-title { font-size:22px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.auth-sub { font-size:12px; color:var(--muted); margin-bottom:24px; }
+.auth-input {
+  width:100%; box-sizing:border-box;
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-family:'Inter',sans-serif; font-size:13px;
+  outline:none; margin-bottom:10px; transition:border-color 0.15s, background 0.25s;
+}
+.auth-input:focus { border-color:var(--accent-border); }
+.auth-input::placeholder { color:var(--muted); }
+.auth-error { font-size:11.5px; color:var(--red); min-height:16px; margin-bottom:8px; line-height:1.4; }
+.auth-btn {
+  width:100%; padding:10px; border-radius:8px; border:none;
+  background:var(--accent); color:#fff; font-family:'Inter',sans-serif;
+  font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s;
+  margin-bottom:16px;
+}
+.auth-btn:hover { opacity:0.88; }
+.auth-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.auth-toggle { text-align:center; font-size:12px; color:var(--muted); }
+.auth-toggle button { background:none; border:none; color:var(--accent); font-family:'Inter',sans-serif; font-size:12px; cursor:pointer; padding:0 4px; text-decoration:underline; }
+.auth-divider { height:1px; background:var(--border); margin:0 0 16px; }
+
+/* ── User pill (topbar) ──────────────────────────────────── */
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+.user-email {
+  font-family:'Inter',sans-serif; font-size:9.5px;
+  color:var(--muted); letter-spacing:0.3px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width: 160px;
+}
+.logout-btn {
+  padding:4px 8px; border-radius:5px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-family:'Inter',sans-serif;
+  font-size:10px; cursor:pointer; letter-spacing:0.4px; white-space:nowrap;
+  transition:border-color 0.15s, color 0.15s, background 0.15s;
+}
+.logout-btn:hover { border-color:var(--red); color:var(--red); background:rgba(248,113,113,0.06); }
 </style>
 </head>
 <body>
@@ -411,62 +518,52 @@ textarea::placeholder { color:var(--muted); }
 <div class="loading-overlay" id="loader">
   <h2>Loading Health Data</h2>
   <div class="loading-bar"><div class="loading-bar-fill"></div></div>
-  <p style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">parsing wearable metrics...</p>
+  <p style="font-family:'Inter',sans-serif;font-size:10px;color:var(--muted)">parsing wearable metrics...</p>
 </div>
 
-<!-- Sidebar -->
-<nav class="sidebar">
-  <div class="sidebar-top">
-    <div class="brand">
-      <div class="brand-name">Meerav · Health</div>
-      <div class="brand-sub"><span class="live-dot"></span>AMAZFIT · APPLE HEALTH</div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Overview</div>
-      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard
-      </div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Metrics</div>
-      <div class="nav-item" data-page="sleep" onclick="navigate('sleep')">
-        <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        Sleep
-      </div>
-      <div class="nav-item" data-page="activity" onclick="navigate('activity')">
-        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Activity
-      </div>
-      <div class="nav-item" data-page="recovery" onclick="navigate('recovery')">
-        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        Heart & Recovery
-      </div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">AI</div>
-      <div class="nav-item" data-page="insights" onclick="navigate('insights')">
-        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Insights
-      </div>
-    </div>
+<!-- Topbar -->
+<nav class="topbar">
+  <div class="topbar-brand">
+    <span class="live-dot"></span>
+    Somada
   </div>
-
-  <div class="sidebar-bottom">
-    <div class="nav-item" data-page="settings" onclick="navigate('settings')" style="margin-bottom:4px">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
-    </div>
-    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">
+  <div class="topbar-nav">
+    <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">Dashboard</div>
+    <div class="nav-item" data-page="sleep" onclick="navigate('sleep')">Sleep</div>
+    <div class="nav-item" data-page="activity" onclick="navigate('activity')">Activity</div>
+    <div class="nav-item" data-page="recovery" onclick="navigate('recovery')">Recovery</div>
+    <div class="nav-item" data-page="insights" onclick="navigate('insights')">Insights</div>
+  </div>
+  <div class="topbar-actions">
+    <div class="nav-item" data-page="settings" onclick="navigate('settings')">Settings</div>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle theme">
       <svg id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       <svg id="icon-moon" viewBox="0 0 24 24" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <span id="theme-label">Light mode</span>
     </button>
+    <div class="user-pill" id="user-panel" style="display:none">
+      <span class="user-email" id="user-email"></span>
+      <button class="logout-btn" onclick="handleLogout()">SIGN OUT</button>
+    </div>
   </div>
 </nav>
+
+<!-- Auth overlay -->
+<div class="auth-overlay" id="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">HEALTH INTELLIGENCE</div>
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-sub" id="auth-sub">Sign in to access your dashboard</div>
+    <div class="auth-divider"></div>
+    <input class="auth-input" id="auth-email" type="email" placeholder="Email address" autocomplete="email">
+    <input class="auth-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()">
+    <div class="auth-error" id="auth-error"></div>
+    <button class="auth-btn" id="auth-submit" onclick="submitAuth()">Sign in</button>
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">Don't have an account?</span>
+      <button onclick="toggleAuthMode()" id="auth-toggle-btn">Sign up</button>
+    </div>
+  </div>
+</div>
 
 <!-- Main -->
 <main class="main">
@@ -476,10 +573,50 @@ textarea::placeholder { color:var(--muted); }
 </main>
 
 <script>
+// ── Health Parser Constants ────────────────────────────────
+const HEALTH_METRIC_MAP = {
+  "HKQuantityTypeIdentifierStepCount": "steps",
+  "HKQuantityTypeIdentifierHeartRate": "heart_rate",
+  "HKQuantityTypeIdentifierRestingHeartRate": "resting_heart_rate",
+  "HKQuantityTypeIdentifierHeartRateVariabilitySDNN": "hrv",
+  "HKCategoryTypeIdentifierSleepAnalysis": "sleep",
+  "HKQuantityTypeIdentifierActiveEnergyBurned": "active_calories",
+  "HKQuantityTypeIdentifierAppleExerciseTime": "exercise_minutes",
+  "HKQuantityTypeIdentifierOxygenSaturation": "spo2",
+  "HKQuantityTypeIdentifierRespiratoryRate": "respiratory_rate",
+  "HKQuantityTypeIdentifierWalkingHeartRateAverage": "walking_hr",
+};
+
+const SLEEP_ASLEEP = new Set([
+  "HKCategoryValueSleepAnalysisAsleep",
+  "HKCategoryValueSleepAnalysisCore",
+  "HKCategoryValueSleepAnalysisDeep",
+  "HKCategoryValueSleepAnalysisREM",
+  "HKCategoryValueSleepAnalysisAsleepCore",
+  "HKCategoryValueSleepAnalysisAsleepDeep",
+  "HKCategoryValueSleepAnalysisAsleepREM",
+  "HKCategoryValueSleepAnalysisAsleepUnspecified",
+]);
+
+const LIFE_EVENTS = [
+  {"label": "Finals Week",    "start": "2024-12-09", "end": "2024-12-15", "color": "#ef4444", "icon": "📚"},
+  {"label": "Winter Break",   "start": "2024-12-16", "end": "2025-01-05", "color": "#22c55e", "icon": "🏖️"},
+  {"label": "Spring Break",   "start": "2025-03-08", "end": "2025-03-16", "color": "#22c55e", "icon": "✈️"},
+  {"label": "Finals Week",    "start": "2025-04-28", "end": "2025-05-05", "color": "#ef4444", "icon": "📚"},
+  {"label": "Summer Break",   "start": "2025-05-10", "end": "2025-08-20", "color": "#f59e0b", "icon": "☀️"},
+  {"label": "Fall Semester",  "start": "2025-08-25", "end": "2025-12-15", "color": "#8b5cf6", "icon": "🎓"},
+  {"label": "Finals Week",    "start": "2025-12-08", "end": "2025-12-14", "color": "#ef4444", "icon": "📚"},
+  {"label": "Winter Break",   "start": "2025-12-15", "end": "2026-01-10", "color": "#22c55e", "icon": "🏖️"},
+  {"label": "Spring Semester","start": "2026-01-12", "end": "2026-02-24", "color": "#8b5cf6", "icon": "🎓"},
+];
+
 // ── State ─────────────────────────────────────────────────
 let healthData = null;
 let charts = {};
 let currentPage = 'dashboard';
+let supabaseClient = null;
+let currentUser = null;
+let authMode = 'login'; // 'login' | 'signup'
 let currentProvider = 'claude';
 let availableProviders = { claude: false, gemini: false };
 let chatHistory = [];
@@ -492,9 +629,10 @@ function initTheme() {
 }
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('icon-sun').style.display  = theme === 'dark'  ? '' : 'none';
-  document.getElementById('icon-moon').style.display = theme === 'light' ? '' : 'none';
-  document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  const sun = document.getElementById('icon-sun');
+  const moon = document.getElementById('icon-moon');
+  if (sun)  sun.style.display  = theme === 'dark'  ? '' : 'none';
+  if (moon) moon.style.display = theme === 'light' ? '' : 'none';
   if (healthData) renderPage(currentPage);
 }
 function toggleTheme() {
@@ -525,15 +663,33 @@ function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
+  document.getElementById('page-content').dataset.page = page;
   renderPage(page);
   window.location.hash = page;
 }
 function renderPage(page) {
   if (!healthData && page !== 'settings') {
     document.getElementById('page-content').innerHTML = `
-      <div class="empty">
-        <h3>No data loaded</h3>
-        <p style="margin-top:8px;font-size:13px">Go to <strong>Settings</strong> to import your Apple Health export.</p>
+      <div style="max-width:560px;margin:48px auto;padding:0 16px">
+        <div class="settings-card" style="margin-bottom:20px">
+          <h3 style="margin-bottom:14px">How to export your Apple Health data</h3>
+          <ol style="margin:0;padding-left:18px;font-size:13px;color:var(--muted);line-height:2">
+            <li>Open the <strong style="color:var(--text)">Health</strong> app on your iPhone</li>
+            <li>Tap your <strong style="color:var(--text)">profile picture</strong> in the top-right corner</li>
+            <li>Scroll down and tap <strong style="color:var(--text)">Export All Health Data</strong></li>
+            <li>Share the ZIP file to your computer (AirDrop, email, etc.) and <strong style="color:var(--text)">unzip it</strong></li>
+            <li>Upload the <code style="font-family:'Inter',sans-serif;font-size:11px;color:var(--accent)">export.xml</code> file below</li>
+          </ol>
+        </div>
+        <div class="settings-card">
+          <h3 style="margin-bottom:12px">Upload Apple Health export</h3>
+          <label class="upload-area" id="upload-area" style="padding:36px 24px;font-size:13px">
+            <input type="file" id="upload-status-input" accept=".xml" onchange="handleFileUpload(this)">
+            <svg viewBox="0 0 24 24" style="width:36px;height:36px;margin:0 auto 12px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Click or drag export.xml here
+          </label>
+          <div id="upload-status"></div>
+        </div>
       </div>`;
     return;
   }
@@ -586,7 +742,7 @@ function getEventAnnotations(labels) {
     annotations[`evt${i}`] = {
       type:"box", xMin:si, xMax:ei>si?ei:si+1,
       backgroundColor:c.bg, borderColor:c.border, borderWidth:1,
-      label:{ content:`${evt.icon||""} ${evt.label}`, display:true, color:c.text, font:{size:9,family:"'JetBrains Mono',monospace"}, position:"start" }
+      label:{ content:`${evt.icon||""} ${evt.label}`, display:true, color:c.text, font:{size:9,family:"'Inter',sans-serif"}, position:"start" }
     };
   });
   return annotations;
@@ -615,8 +771,8 @@ function makeChart(id, type, labels, datasets, opts = {}) {
     x:{ display:false, grid:{display:false} },
     y:{ display:false, grid:{display:false} }
   } : {
-    x:{ grid:{color:c.grid}, ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"},maxRotation:0}, border:{color:c.axis} },
-    y:{ grid:{color:c.grid}, ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"}}, border:{color:c.axis} }
+    x:{ grid:{color:c.grid}, ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"},maxRotation:0}, border:{color:c.axis} },
+    y:{ grid:{color:c.grid}, ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"}}, border:{color:c.axis} }
   };
 
   charts[id] = new Chart(ctx, {
@@ -638,13 +794,13 @@ function makeChart(id, type, labels, datasets, opts = {}) {
       plugins: {
         legend: {
           display: !spark && datasets.length > 1,
-          labels: { color:c.tick, font:{size:10,family:"'JetBrains Mono',monospace"}, boxWidth:10, padding:10 }
+          labels: { color:c.tick, font:{size:10,family:"'Inter',sans-serif"}, boxWidth:10, padding:10 }
         },
         tooltip: spark ? {enabled:false} : {
           backgroundColor:c.ttBg, borderColor:c.ttBrd, borderWidth:1,
           titleColor:c.ttTitle, bodyColor:c.ttBody, padding:10,
-          titleFont:{family:"'JetBrains Mono',monospace",size:10},
-          bodyFont:{family:"'Syne',sans-serif",size:12},
+          titleFont:{family:"'Inter',sans-serif",size:10},
+          bodyFont:{family:"'Inter',sans-serif",size:12},
           callbacks: {
             title:(items) => labels[items[0].dataIndex]||'',
             label:(item) => {
@@ -663,7 +819,6 @@ function makeChart(id, type, labels, datasets, opts = {}) {
 function renderDashboard() {
   const s = healthData.summary || {};
   const dark = isDark();
-  const d14 = daily(14);
   const d30 = daily(30);
   const d60 = daily(60);
 
@@ -676,6 +831,8 @@ function renderDashboard() {
   const prev30Hr = avg(d60.slice(0,30).map(d=>d.resting_hr));
   const cur30Hrv = avg(d30.map(d=>d.hrv));
   const prev30Hrv = avg(d60.slice(0,30).map(d=>d.hrv));
+  const cur30Spo2 = avg(d30.map(d=>d.spo2).filter(Boolean));
+  const cur30Ex   = avg(d30.map(d=>d.exercise_minutes).filter(Boolean));
 
   function deltaHTML(cur, prev, invert=false) {
     if (cur==null||prev==null) return '';
@@ -683,7 +840,7 @@ function renderDashboard() {
     const better = invert ? d < 0 : d > 0;
     const cls = better ? 'up' : 'down';
     const arrow = d >= 0 ? '▲' : '▼';
-    return `<div class="spark-delta ${cls}">${arrow} ${Math.abs(d).toFixed(1)}% vs prev 30d</div>`;
+    return `<div class="bento-delta ${cls}">${arrow} ${Math.abs(d).toFixed(1)}% vs prev 30d</div>`;
   }
 
   const activeEvent = getActiveEvent();
@@ -701,58 +858,50 @@ function renderDashboard() {
   document.getElementById('page-content').innerHTML = `
     <div class="page-header">
       <div class="page-title">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
-      <div class="page-sub">${s.total_days||0} days of data tracked</div>
+      <div class="page-sub">${s.total_days||0} days of data · all-time averages</div>
     </div>
 
     ${eventBanner}
 
-    <div class="stat-grid">
-      <div class="stat-card" style="--card-color:#6366f1">
-        <div class="stat-label">Avg Daily Steps</div>
-        <div class="stat-value">${s.avg_steps?(s.avg_steps/1000).toFixed(1):'–'}<span class="stat-unit">k</span></div>
-        <div class="stat-sub">${s.total_days||'–'} days tracked</div>
-      </div>
-      <div class="stat-card" style="--card-color:#a78bfa">
-        <div class="stat-label">Avg Sleep</div>
-        <div class="stat-value">${fmt(s.avg_sleep_hours,1)}<span class="stat-unit">hrs</span></div>
-        <div class="stat-sub">best: ${fmt(s.best_sleep,1)}h</div>
-      </div>
-      <div class="stat-card" style="--card-color:#f87171">
-        <div class="stat-label">Avg Resting HR</div>
-        <div class="stat-value">${fmt(s.avg_resting_hr,0)}<span class="stat-unit">bpm</span></div>
-        <div class="stat-sub">lower is better</div>
-      </div>
-      <div class="stat-card" style="--card-color:#34d399">
-        <div class="stat-label">Avg HRV</div>
-        <div class="stat-value">${fmt(s.avg_hrv,0)}<span class="stat-unit">ms</span></div>
-        <div class="stat-sub">higher is better</div>
-      </div>
-    </div>
-
-    <div class="sparkline-grid">
-      <div class="sparkline-card">
-        <div class="spark-label">Steps · last 30d</div>
-        <div class="spark-value">${cur30Steps?(cur30Steps/1000).toFixed(1):'–'}<span class="spark-unit">k/day</span></div>
+    <div class="bento-grid">
+      <div class="bento-card bento-steps">
+        <div class="bento-label">Avg Daily Steps</div>
+        <div class="bento-hero">${s.avg_steps?(s.avg_steps/1000).toFixed(1):'–'}<span class="bento-unit">k</span></div>
+        <div class="bento-sub">${s.total_days||'–'} days tracked</div>
         <canvas id="spark-steps" height="60"></canvas>
         ${deltaHTML(cur30Steps,prev30Steps)}
       </div>
-      <div class="sparkline-card">
-        <div class="spark-label">Sleep · last 30d</div>
-        <div class="spark-value">${fmt(cur30Sleep,1)}<span class="spark-unit">hrs</span></div>
-        <canvas id="spark-sleep" height="60"></canvas>
+      <div class="bento-card bento-sleep">
+        <div class="bento-label">Avg Sleep</div>
+        <div class="bento-hero">${fmt(s.avg_sleep_hours,1)}<span class="bento-unit">h</span></div>
+        <div class="bento-sub">best: ${fmt(s.best_sleep,1)}h</div>
         ${deltaHTML(cur30Sleep,prev30Sleep)}
       </div>
-      <div class="sparkline-card">
-        <div class="spark-label">Resting HR · last 30d</div>
-        <div class="spark-value">${fmt(cur30Hr,0)}<span class="spark-unit">bpm</span></div>
-        <canvas id="spark-hr" height="60"></canvas>
+      <div class="bento-card bento-hrv">
+        <div class="bento-label">Avg HRV</div>
+        <div class="bento-hero">${fmt(s.avg_hrv,0)}<span class="bento-unit">ms</span></div>
+        <div class="bento-sub">higher is better</div>
+        ${deltaHTML(cur30Hrv,prev30Hrv)}
+      </div>
+      <div class="bento-card bento-hr">
+        <div class="bento-label">Resting HR</div>
+        <div class="bento-hero">${fmt(s.avg_resting_hr,0)}<span class="bento-unit">bpm</span></div>
+        <div class="bento-sub">lower is better</div>
         ${deltaHTML(cur30Hr,prev30Hr,true)}
       </div>
-      <div class="sparkline-card">
-        <div class="spark-label">HRV · last 30d</div>
-        <div class="spark-value">${fmt(cur30Hrv,0)}<span class="spark-unit">ms</span></div>
-        <canvas id="spark-hrv" height="60"></canvas>
-        ${deltaHTML(cur30Hrv,prev30Hrv)}
+      <div class="bento-card bento-spo2">
+        <div class="bento-label">SpO2</div>
+        <div class="bento-hero">${fmt(cur30Spo2,1)}<span class="bento-unit">%</span></div>
+        <div class="bento-sub">avg last 30d</div>
+      </div>
+      <div class="bento-card bento-act">
+        <div class="bento-label">Exercise</div>
+        <div class="bento-hero">${fmt(cur30Ex,0)}<span class="bento-unit">min</span></div>
+        <div class="bento-sub">avg last 30d</div>
+      </div>
+      <div class="bento-card bento-trend">
+        <div class="bento-label">Sleep · 6 months</div>
+        <canvas id="db-sleep"></canvas>
       </div>
     </div>
 
@@ -760,32 +909,28 @@ function renderDashboard() {
 
     <div class="charts-grid-2">
       <div class="chart-section">
-        <div class="chart-header"><span class="chart-title">Sleep (6 months)</span><span class="chart-meta">daily · hours</span></div>
-        <div class="chart-box"><canvas id="db-sleep"></canvas></div>
-      </div>
-      <div class="chart-section">
         <div class="chart-header"><span class="chart-title">Steps (6 months)</span><span class="chart-meta">daily · count</span></div>
         <div class="chart-box"><canvas id="db-steps"></canvas></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-header"><span class="chart-title">HRV (6 months)</span><span class="chart-meta">daily · ms</span></div>
+        <div class="chart-box"><canvas id="db-hrv"></canvas></div>
       </div>
     </div>
   `;
 
-  // Sparklines
+  // Sparkline inside steps bento card
   const sp = {spark:true};
   const stepsArr = getDailyArray('steps',30);
-  makeChart('spark-steps','bar',stepsArr.labels,[{data:stepsArr.values,backgroundColor:dark?'rgba(99,102,241,0.5)':'rgba(99,102,241,0.4)',borderColor:'transparent',borderRadius:1}],{...sp});
-  const sleepArr = getDailyArray('sleep_hours',30);
-  makeChart('spark-sleep','line',sleepArr.labels,[{data:sleepArr.values,borderColor:'#a78bfa',backgroundColor:'transparent'}],{...sp});
-  const hrArr = getDailyArray('resting_hr',30);
-  makeChart('spark-hr','line',hrArr.labels,[{data:hrArr.values,borderColor:'#f87171',backgroundColor:'transparent'}],{...sp});
-  const hrvArr = getDailyArray('hrv',30);
-  makeChart('spark-hrv','line',hrvArr.labels,[{data:hrvArr.values,borderColor:'#34d399',backgroundColor:'transparent'}],{...sp});
+  makeChart('spark-steps','bar',stepsArr.labels,[{data:stepsArr.values,backgroundColor:'rgba(255,255,255,0.35)',borderColor:'transparent',borderRadius:2}],{...sp});
 
   // Overview charts
   const sleep6 = getDailyArray('sleep_hours');
-  makeChart('db-sleep','line',sleep6.labels,[{label:'Sleep',data:sleep6.values,borderColor:'#a78bfa',backgroundColor:dark?'rgba(167,139,250,0.07)':'rgba(167,139,250,0.09)',fill:true}],{yLabel:'hrs'});
+  makeChart('db-sleep','line',sleep6.labels,[{label:'Sleep',data:sleep6.values,borderColor:'rgba(167,139,250,0.9)',backgroundColor:'rgba(167,139,250,0.08)',fill:true}],{yLabel:'hrs'});
   const steps6 = getDailyArray('steps');
-  makeChart('db-steps','bar',steps6.labels,[{label:'Steps',data:steps6.values,backgroundColor:dark?'rgba(99,102,241,0.35)':'rgba(99,102,241,0.2)',borderColor:dark?'rgba(99,102,241,0.7)':'rgba(99,102,241,0.45)',borderRadius:2}],{yLabel:'steps'});
+  makeChart('db-steps','bar',steps6.labels,[{label:'Steps',data:steps6.values,backgroundColor:dark?'rgba(99,102,241,0.4)':'rgba(99,102,241,0.25)',borderColor:dark?'rgba(99,102,241,0.75)':'rgba(99,102,241,0.5)',borderRadius:2}],{yLabel:'steps'});
+  const hrv6 = getDailyArray('hrv');
+  makeChart('db-hrv','line',hrv6.labels,[{label:'HRV',data:hrv6.values,borderColor:'#34d399',backgroundColor:dark?'rgba(52,211,153,0.07)':'rgba(52,211,153,0.09)',fill:true}],{yLabel:'ms'});
 }
 
 // ── PAGE: Sleep ───────────────────────────────────────────
@@ -836,7 +981,7 @@ function renderSleep() {
   makeChart('sleep-main','line',sl.labels,[{label:'Sleep',data:sl.values,borderColor:'#a78bfa',backgroundColor:dark?'rgba(167,139,250,0.08)':'rgba(167,139,250,0.1)',fill:true}],{yLabel:'hrs'});
   makeChart('sleep-dow','bar',dowLabels,
     [{label:'Avg Sleep',data:dowAvg,backgroundColor:dark?'rgba(167,139,250,0.4)':'rgba(167,139,250,0.3)',borderColor:'#a78bfa',borderRadius:4}],
-    {yLabel:'hrs', scales:{x:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:cc().axis}},y:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:cc().axis}}}});
+    {yLabel:'hrs', scales:{x:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:cc().axis}},y:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:cc().axis}}}});
 
   const hrv6 = getDailyArray('hrv');
   makeChart('sleep-hrv','line',sl.labels,[
@@ -844,9 +989,9 @@ function renderSleep() {
     {label:'HRV',data:hrv6.values,borderColor:'#34d399',backgroundColor:'transparent',yAxisID:'y1'}
   ],{
     scales:{
-      x:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'JetBrains Mono',monospace"},maxRotation:0},border:{color:cc().axis}},
-      y:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:cc().axis}},
-      y1:{type:'linear',display:true,position:'right',grid:{drawOnChartArea:false},ticks:{color:cc().tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:cc().axis}}
+      x:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'Inter',sans-serif"},maxRotation:0},border:{color:cc().axis}},
+      y:{grid:{color:cc().grid},ticks:{color:cc().tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:cc().axis}},
+      y1:{type:'linear',display:true,position:'right',grid:{drawOnChartArea:false},ticks:{color:cc().tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:cc().axis}}
     }
   });
 }
@@ -959,9 +1104,9 @@ function renderRecovery() {
     {label:'HRV',data:hrv6.values,borderColor:'#34d399',backgroundColor:dark?'rgba(52,211,153,0.07)':'rgba(52,211,153,0.08)',fill:true,yAxisID:'y1'}
   ],{
     scales:{
-      x:{grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"},maxRotation:0},border:{color:c.axis}},
-      y:{grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:c.axis}},
-      y1:{type:'linear',display:true,position:'right',grid:{drawOnChartArea:false},ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:c.axis}}
+      x:{grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"},maxRotation:0},border:{color:c.axis}},
+      y:{grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:c.axis}},
+      y1:{type:'linear',display:true,position:'right',grid:{drawOnChartArea:false},ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:c.axis}}
     }
   });
 
@@ -969,8 +1114,8 @@ function renderRecovery() {
     label:'Recovery Score',data:recoveryArr,
     borderColor:'#6366f1',backgroundColor:dark?'rgba(99,102,241,0.1)':'rgba(99,102,241,0.08)',fill:true
   }],{yLabel:'/100',scales:{
-    x:{grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"},maxRotation:0},border:{color:c.axis}},
-    y:{min:0,max:100,grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'JetBrains Mono',monospace"}},border:{color:c.axis}}
+    x:{grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"},maxRotation:0},border:{color:c.axis}},
+    y:{min:0,max:100,grid:{color:c.grid},ticks:{color:c.tick,font:{size:9,family:"'Inter',sans-serif"}},border:{color:c.axis}}
   }});
 }
 
@@ -1126,42 +1271,22 @@ function renderSettings() {
         <div class="settings-row"><span class="settings-row-label">Avg steps</span><span class="settings-row-value">${s.avg_steps?(s.avg_steps/1000).toFixed(1)+'k':'–'}</span></div>
         <div class="settings-row"><span class="settings-row-label">Avg sleep</span><span class="settings-row-value">${s.avg_sleep_hours?s.avg_sleep_hours.toFixed(1)+'h':'–'}</span></div>
         <div class="settings-row"><span class="settings-row-label">Last parsed</span><span class="settings-row-value">${genAt}</span></div>
-        <div class="btn-group">
-          <button class="btn primary" onclick="doReparse()">
-            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Re-parse export.xml
-          </button>
-        </div>
-        <div id="reparse-status"></div>
       </div>
 
       <div class="settings-card">
-        <h3>Upload New Export</h3>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Upload a new <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">export.xml</code> from Apple Health. This will replace the current file and re-parse automatically.</p>
-        <label class="upload-area" id="upload-area">
-          <input type="file" id="file-input" accept=".xml" onchange="handleFileUpload(this)">
+        <h3>Update Health Data</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Export from Apple Health and upload here to refresh your dashboard with the latest data.</p>
+        <label class="upload-area" style="padding:20px 16px;font-size:12px">
+          <input type="file" accept=".xml" onchange="handleFileUpload(this)">
           <svg viewBox="0 0 24 24" style="width:24px;height:24px;margin:0 auto 8px;display:block;fill:none;stroke:currentColor;stroke-width:1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Click to select export.xml
+          Click or drag export.xml here
         </label>
         <div id="upload-status"></div>
       </div>
 
       <div class="settings-card">
-        <h3>API Keys</h3>
-        <div class="settings-row">
-          <span class="settings-row-label">CLAUDE_API_KEY</span>
-          <span class="key-status"><span class="key-dot ${availableProviders.claude?'set':'unset'}"></span>${availableProviders.claude?'Configured':'Not set'}</span>
-        </div>
-        <div class="settings-row">
-          <span class="settings-row-label">GEMINI_API_KEY</span>
-          <span class="key-status"><span class="key-dot ${availableProviders.gemini?'set':'unset'}"></span>${availableProviders.gemini?'Configured':'Not set'}</span>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">Keys are loaded from <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent)">.env</code> in the project directory. Edit that file and restart the server to update.</p>
-      </div>
-
-      <div class="settings-card">
         <h3>Life Events</h3>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">Events are defined in <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">parse_health.py</code> under <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">LIFE_EVENTS</code>.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">Events are defined in <code style="font-family:'Inter',sans-serif;font-size:11px;color:var(--accent)">parse_health.py</code> under <code style="font-family:'Inter',sans-serif;font-size:11px;color:var(--accent)">LIFE_EVENTS</code>.</p>
         <div style="max-height:180px;overflow-y:auto">
           ${(healthData?.events||[]).map(e=>{
             const c=getEC(e.label);
@@ -1199,35 +1324,190 @@ async function doReparse() {
   }
 }
 
+// ── Browser-side Apple Health XML Parser ──────────────────
+function _getAttr(attrs, name) {
+  const m = attrs.match(new RegExp('\\b' + name + '="([^"]*)"'));
+  return m ? m[1] : null;
+}
+
+async function parseHealthXML(file, onProgress) {
+  onProgress(0, 'Reading file...');
+  const text = await file.text();
+  const total = text.length;
+
+  onProgress(3, 'Parsing records...');
+
+  // Accumulator: date → metric arrays + sleep_minutes
+  const raw = {};
+
+  const recordRe = /<Record\b([^>]*?)(?:\/>|>)/g;
+  let match;
+  let count = 0;
+
+  while ((match = recordRe.exec(text)) !== null) {
+    const attrs = match[1];
+    const type = _getAttr(attrs, 'type');
+    const metric = HEALTH_METRIC_MAP[type];
+    if (!metric) continue;
+
+    const startDate = _getAttr(attrs, 'startDate');
+    if (!startDate) continue;
+    const dateKey = startDate.slice(0, 10);
+
+    if (!raw[dateKey]) {
+      raw[dateKey] = {
+        steps: [], heart_rate: [], resting_heart_rate: [], hrv: [],
+        sleep_minutes: 0, active_calories: [], exercise_minutes: [],
+        spo2: [], respiratory_rate: [],
+      };
+    }
+
+    if (metric === 'sleep') {
+      const value = _getAttr(attrs, 'value');
+      if (SLEEP_ASLEEP.has(value)) {
+        const endDate = _getAttr(attrs, 'endDate');
+        if (endDate) {
+          const startMs = new Date(startDate.slice(0, 19)).getTime();
+          const endMs   = new Date(endDate.slice(0, 19)).getTime();
+          const mins = (endMs - startMs) / 60000;
+          if (mins > 0 && mins < 720) raw[dateKey].sleep_minutes += mins;
+        }
+      }
+    } else {
+      const value = parseFloat(_getAttr(attrs, 'value'));
+      if (!isNaN(value) && Array.isArray(raw[dateKey][metric])) {
+        raw[dateKey][metric].push(value);
+      }
+    }
+
+    count++;
+    if (count % 5000 === 0) {
+      const pct = 3 + Math.round((recordRe.lastIndex / total) * 82);
+      onProgress(pct, `Parsing records… ${count.toLocaleString()} processed`);
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  onProgress(85, 'Aggregating daily data...');
+  await new Promise(r => setTimeout(r, 0));
+
+  // Aggregate per-day
+  const aggregated = {};
+  for (const [dateKey, d] of Object.entries(raw).sort()) {
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    aggregated[dateKey] = {
+      date:              dateKey,
+      steps:             d.steps.length ? Math.round(d.steps.reduce((a,b)=>a+b,0)) : null,
+      heart_rate_avg:    d.heart_rate.length ? +avg(d.heart_rate).toFixed(1) : null,
+      heart_rate_min:    d.heart_rate.length ? +Math.min(...d.heart_rate).toFixed(1) : null,
+      heart_rate_max:    d.heart_rate.length ? +Math.max(...d.heart_rate).toFixed(1) : null,
+      resting_hr:        d.resting_heart_rate.length ? +avg(d.resting_heart_rate).toFixed(1) : null,
+      hrv:               d.hrv.length ? +avg(d.hrv).toFixed(1) : null,
+      sleep_hours:       d.sleep_minutes > 0 ? +(d.sleep_minutes / 60).toFixed(2) : null,
+      active_calories:   d.active_calories.length ? Math.round(d.active_calories.reduce((a,b)=>a+b,0)) : null,
+      exercise_minutes:  d.exercise_minutes.length ? Math.round(d.exercise_minutes.reduce((a,b)=>a+b,0)) : null,
+      spo2:              d.spo2.length ? +avg(d.spo2).toFixed(1) : null,
+    };
+  }
+
+  // Filter to last 8 months
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 8);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const filtered = Object.fromEntries(Object.entries(aggregated).filter(([k]) => k >= cutoffStr));
+
+  onProgress(90, 'Computing summary...');
+  await new Promise(r => setTimeout(r, 0));
+
+  // Summary stats
+  const allDays = Object.values(filtered);
+  const avgStat = vals => { const c = vals.filter(v => v != null); return c.length ? +(c.reduce((a,b)=>a+b,0)/c.length).toFixed(1) : null; };
+  const bestStepsDay = allDays.reduce((best, d) => (!best || (d.steps||0) > (best.steps||0)) ? d : best, null);
+  const summary = {
+    avg_steps:       avgStat(allDays.map(d => d.steps)),
+    avg_sleep_hours: avgStat(allDays.map(d => d.sleep_hours)),
+    avg_resting_hr:  avgStat(allDays.map(d => d.resting_hr)),
+    avg_hrv:         avgStat(allDays.map(d => d.hrv)),
+    best_sleep:      allDays.map(d=>d.sleep_hours).filter(v=>v!=null).reduce((a,b)=>Math.max(a,b), null),
+    worst_sleep:     allDays.map(d=>d.sleep_hours).filter(v=>v!=null).reduce((a,b)=>Math.min(a,b), null),
+    best_steps_day:  bestStepsDay ? bestStepsDay.date : null,
+    total_days:      allDays.length,
+  };
+
+  return {
+    daily: filtered,
+    summary,
+    events: LIFE_EVENTS,
+    generated_at: new Date().toISOString(),
+  };
+}
+
 async function handleFileUpload(input) {
   const file = input.files[0];
   if (!file) return;
   const el = document.getElementById('upload-status');
-  el.className = 'status-msg loading';
-  el.textContent = `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)...`;
-  try {
-    const uploadResp = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': file.name },
-      body: file
-    });
-    const upData = await uploadResp.json();
-    if (!upData.ok) throw new Error(upData.error || 'Upload failed');
-    el.textContent = 'Upload complete. Parsing data (this may take a few minutes)...';
-    const reparseResp = await fetch('/api/reparse', { method: 'POST' });
-    const reparseData = await reparseResp.json();
-    if (reparseData.ok) {
-      el.className = 'status-msg success';
-      el.textContent = 'Done! Data has been updated.';
-      const hr = await fetch('/api/health');
-      healthData = await hr.json();
-    } else {
-      el.className = 'status-msg error';
-      el.textContent = 'Parse error: ' + (reparseData.error || 'Unknown');
-    }
-  } catch(e) {
+
+  function showError(msg, detail) {
     el.className = 'status-msg error';
-    el.textContent = 'Error: ' + e.message;
+    el.innerHTML = `<strong>Error:</strong> ${msg}${detail ? `<div class="upload-error-detail">${detail}</div>` : ''}`;
+  }
+
+  // File validation
+  if (!file.name.toLowerCase().endsWith('.xml')) {
+    showError('Wrong file type — select the export.xml file, not the ZIP or any other format.');
+    return;
+  }
+  if (file.size === 0) {
+    showError('The selected file is empty.');
+    return;
+  }
+  if (file.size > 600 * 1024 * 1024) {
+    showError(`File is ${(file.size/1024/1024).toFixed(0)} MB — too large. Make sure you selected export.xml from inside the unzipped folder, not the ZIP itself.`);
+    return;
+  }
+
+  const startTime = Date.now();
+  let timerInterval;
+
+  function elapsed() { return Math.floor((Date.now() - startTime) / 1000); }
+
+  function renderProgress(pct, label) {
+    el.className = 'status-msg loading';
+    el.innerHTML = `
+      <div>${label}</div>
+      <div class="progress-wrap"><div class="progress-bar" id="u-bar" style="width:${pct}%"></div></div>
+      <div class="upload-detail" id="u-detail">${pct}% · ${elapsed()}s elapsed</div>`;
+  }
+
+  timerInterval = setInterval(() => {
+    const bar = document.getElementById('u-bar');
+    const d = document.getElementById('u-detail');
+    const pct = bar ? parseInt(bar.style.width) || 0 : 0;
+    if (d) d.textContent = `${pct}% · ${elapsed()}s elapsed`;
+  }, 1000);
+
+  try {
+    // Parse phase — runs entirely in the browser
+    const result = await parseHealthXML(file, (pct, label) => {
+      renderProgress(Math.round(pct * 0.9), label);
+    });
+
+    // Save phase — write parsed JSON to Supabase
+    renderProgress(90, 'Saving to Supabase...');
+    if (!currentUser) throw { msg: 'Not signed in — please log in before uploading.', detail: null };
+    const { error } = await supabaseClient.from('health_data').upsert({ id: 1, data: result }, { onConflict: 'id' });
+    if (error) throw { msg: 'Failed to save to Supabase', detail: error.message };
+
+    clearInterval(timerInterval);
+
+    healthData = result;
+    el.className = 'status-msg success';
+    el.textContent = `Done! Parsed & saved in ${elapsed()}s — opening dashboard...`;
+    setTimeout(() => navigate('dashboard'), 800);
+  } catch(e) {
+    clearInterval(timerInterval);
+    if (e && e.msg) showError(e.msg, e.detail);
+    else showError('Unexpected error', e.message || String(e));
   }
 }
 
@@ -1263,10 +1543,42 @@ function sendSuggestion(el) {
 function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
 function autoResize(el) { el.style.height='40px'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 
+function renderMarkdown(md) {
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function inline(s) {
+    return esc(s)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+  }
+  const lines = md.split('\n');
+  let html = '', inList = null, para = [];
+  function flushPara() { if (para.length) { html += `<p>${para.join('<br>')}</p>`; para = []; } }
+  function flushList() { if (inList) { html += `</${inList}>`; inList = null; } }
+  for (const line of lines) {
+    const ol = line.match(/^(\d+)\.\s+(.*)/);
+    const ul = line.match(/^[-*]\s+(.*)/);
+    if (ol) {
+      flushPara();
+      if (inList !== 'ol') { flushList(); html += '<ol>'; inList = 'ol'; }
+      html += `<li>${inline(ol[2])}</li>`;
+    } else if (ul) {
+      flushPara();
+      if (inList !== 'ul') { flushList(); html += '<ul>'; inList = 'ul'; }
+      html += `<li>${inline(ul[1])}</li>`;
+    } else if (line.trim() === '') {
+      flushList(); flushPara();
+    } else {
+      flushList(); para.push(inline(line));
+    }
+  }
+  flushList(); flushPara();
+  return html;
+}
 function appendMessageEl(container, role, content) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
-  div.innerHTML = `<div class="avatar ${role==='ai'?'ai':'user-av'}">${role==='ai'?'AI':'M'}</div><div class="bubble">${content.replace(/\n/g,'<br>')}</div>`;
+  const body = role === 'ai' ? renderMarkdown(content) : content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  div.innerHTML = `<div class="avatar ${role==='ai'?'ai':'user-av'}">${role==='ai'?'AI':'M'}</div><div class="bubble">${body}</div>`;
   container.appendChild(div);
   return div;
 }
@@ -1314,9 +1626,103 @@ async function sendMessage() {
   }
 }
 
-// ── Init ─────────────────────────────────────────────────
-async function init() {
-  initTheme();
+// ── Auth ─────────────────────────────────────────────────
+async function initSupabase() {
+  try {
+    const cfg = await fetch('/api/supabase_config').then(r => r.json());
+    if (!cfg.url || !cfg.anonKey) return false; // not configured — skip auth
+    supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey);
+  } catch(e) { return false; }
+
+  // Check for an existing session
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    showUserPanel(currentUser.email);
+    return true; // already logged in
+  }
+
+  // Listen for future auth changes
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      currentUser = session.user;
+      showUserPanel(currentUser.email);
+      await loadAppData();
+      showApp();
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      document.getElementById('user-panel').style.display = 'none';
+      showAuthOverlay();
+    }
+  });
+
+  // Not logged in — show auth screen
+  showAuthOverlay();
+  return null; // signal: waiting for login
+}
+
+function showAuthOverlay() {
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('loader').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('auth-overlay').style.display = 'none';
+  const hash = window.location.hash.slice(1) || 'dashboard';
+  navigate(hash);
+  document.getElementById('loader').style.display = 'none';
+}
+
+function showUserPanel(email) {
+  const panel = document.getElementById('user-panel');
+  const emailEl = document.getElementById('user-email');
+  if (panel && emailEl) { emailEl.textContent = email; panel.style.display = 'block'; }
+}
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  const isLogin = authMode === 'login';
+  document.getElementById('auth-submit').textContent  = isLogin ? 'Sign in' : 'Create account';
+  document.getElementById('auth-sub').textContent     = isLogin ? 'Sign in to access your dashboard' : 'Create an account to get started';
+  document.getElementById('auth-toggle-text').textContent = isLogin ? "Don't have an account?" : 'Already have an account?';
+  document.getElementById('auth-toggle-btn').textContent  = isLogin ? 'Sign up' : 'Sign in';
+  document.getElementById('auth-error').textContent = '';
+  document.getElementById('auth-password').autocomplete = isLogin ? 'current-password' : 'new-password';
+}
+
+async function submitAuth() {
+  if (!supabaseClient) return;
+  const email   = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl   = document.getElementById('auth-error');
+  const btn     = document.getElementById('auth-submit');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  btn.disabled = true;
+  errEl.textContent = '';
+  try {
+    const { error } = authMode === 'login'
+      ? await supabaseClient.auth.signInWithPassword({ email, password })
+      : await supabaseClient.auth.signUp({ email, password });
+    if (error) {
+      errEl.textContent = error.message;
+    } else if (authMode === 'signup') {
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = 'Check your email to confirm your account.';
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error. Please try again.';
+  } finally {
+    btn.disabled = false;
+    if (errEl.style.color !== 'var(--green)') errEl.style.color = '';
+  }
+}
+
+async function handleLogout() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+}
+
+async function loadAppData() {
   try {
     const [healthResp, configResp] = await Promise.all([
       fetch('/api/health'),
@@ -1329,6 +1735,22 @@ async function init() {
     if (availableProviders.claude)      currentProvider = 'claude';
     else if (availableProviders.gemini) currentProvider = 'gemini';
   } catch(e) { /* server not running */ }
+}
+
+// ── Init ─────────────────────────────────────────────────
+async function init() {
+  initTheme();
+
+  // Try to init Supabase auth
+  const authResult = await initSupabase();
+  // authResult === false  → Supabase not configured, load app normally
+  // authResult === null   → waiting for login (auth overlay is shown)
+  // authResult === true   → already logged in, proceed
+
+  if (authResult === null) return; // waiting for user to log in
+
+  // Load health + config data (shared by loadAppData path too)
+  await loadAppData();
 
   const hash = window.location.hash.slice(1) || 'dashboard';
   navigate(hash);

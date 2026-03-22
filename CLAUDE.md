@@ -174,6 +174,18 @@ Single-file vanilla JS app (~1750 lines). No framework, no build step.
 | `currentProvider` | string | `'claude'` or `'gemini'` |
 | `charts` | object | Chart.js instances keyed by canvas ID |
 
+### Dashboard — Bento Grid
+The default `dashboard` page uses a **bento grid** layout (4-column, 3-row CSS grid). Cards:
+- `.bento-steps` — steps count + mini sparkline
+- `.bento-sleep` — sleep hours
+- `.bento-hrv` — HRV
+- `.bento-hr` — heart rate
+- `.bento-spo2` — SpO₂
+- `.bento-act` — active calories
+- `.bento-trend` — multi-metric trend chart (full-width bottom row)
+
+Each bento card has a coloured background (`--card-steps`, `--card-sleep`, etc.), a hero number, delta badge, and optional sub-label. Cards animate on hover (`translateY(-2px)`).
+
 ### Navigation
 `navigate(page)` sets `currentPage` and calls `renderPage(page)`. Hash-based: `window.location.hash` reflects current page. Pages: `dashboard`, `sleep`, `activity`, `recovery`, `insights`, `chat`, `settings`, `upload`.
 
@@ -208,7 +220,7 @@ Chart.js 4.4.1 (CDN). All charts are stored in the `charts` global object. When 
 
 CSS custom properties (tokens) defined on `:root` and `[data-theme="dark"]`. No CSS framework. Dark mode is default. Theme toggled via `applyTheme()`, persisted in `localStorage`.
 
-Fonts: Syne (UI) + JetBrains Mono (code/mono) via Google Fonts CDN.
+Fonts: **Inter** (all weights 300–800) via Google Fonts CDN. Previously Syne + JetBrains Mono — fully replaced in the bento redesign.
 
 ---
 

@@ -415,6 +415,7 @@ textarea::placeholder { color:var(--muted); }
 .settings-row-value { font-weight: 600; color: var(--text); font-size: 12px; }
 .settings-row-value.good { color: var(--green); }
 .settings-row-value.bad { color: var(--red); }
+.settings-row-value.warn { color: #fbbf24; }
 .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
 .btn:hover { border-color: var(--accent-border); background: var(--accent-faint); color: var(--accent); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
@@ -1282,10 +1283,24 @@ function renderInsights() {
 
 // ── PAGE: Settings ────────────────────────────────────────
 function renderSettings() {
+  const hasOwnData = currentUser ? localStorage.getItem('hasOwnData_' + currentUser.id) : true;
+  const isDemo = !!healthData && !hasOwnData && !!currentUser;
   const hasData = !!healthData;
   const s = healthData?.summary || {};
   const genAt = healthData?.generated_at ? new Date(healthData.generated_at).toLocaleString() : '–';
-  const hasExport = true; // we'll check via backend
+
+  // Status label and CSS class for the Current Data card
+  let statusClass, statusText;
+  if (!hasData) {
+    statusClass = 'bad'; statusText = 'No data';
+  } else if (isDemo) {
+    statusClass = 'warn'; statusText = 'Demo data';
+  } else {
+    statusClass = 'good'; statusText = 'Loaded';
+  }
+
+  // For demo users show a note instead of stats that belong to someone else
+  const demoNote = isDemo ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:6px;font-size:11px;color:#fbbf24;line-height:1.5">You're viewing sample data. Upload your own Apple Health export below to see your real stats.</div>` : '';
 
   document.getElementById('page-content').innerHTML = `
     <div class="page-header">
@@ -1295,11 +1310,12 @@ function renderSettings() {
     <div class="settings-grid">
       <div class="settings-card">
         <h3>Current Data</h3>
-        <div class="settings-row"><span class="settings-row-label">Status</span><span class="settings-row-value ${hasData?'good':'bad'}">${hasData?'Loaded':'No data'}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Days tracked</span><span class="settings-row-value">${s.total_days||'–'}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Avg steps</span><span class="settings-row-value">${s.avg_steps?(s.avg_steps/1000).toFixed(1)+'k':'–'}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Avg sleep</span><span class="settings-row-value">${s.avg_sleep_hours?s.avg_sleep_hours.toFixed(1)+'h':'–'}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Last parsed</span><span class="settings-row-value">${genAt}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Status</span><span class="settings-row-value ${statusClass}">${statusText}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Days tracked</span><span class="settings-row-value">${isDemo ? '–' : (s.total_days||'–')}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Avg steps</span><span class="settings-row-value">${isDemo ? '–' : (s.avg_steps?(s.avg_steps/1000).toFixed(1)+'k':'–')}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Avg sleep</span><span class="settings-row-value">${isDemo ? '–' : (s.avg_sleep_hours?s.avg_sleep_hours.toFixed(1)+'h':'–')}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Last parsed</span><span class="settings-row-value">${isDemo ? '–' : genAt}</span></div>
+        ${demoNote}
       </div>
 
       <div class="settings-card">
@@ -1478,23 +1494,35 @@ async function handleFileUpload(input) {
 
   function showError(msg, detail) {
     el.className = 'status-msg error';
-    el.innerHTML = `<strong>Error:</strong> ${msg}${detail ? `<div class="upload-error-detail">${detail}</div>` : ''}`;
+    el.innerHTML = `<strong>Upload failed:</strong> ${msg}${detail ? `<div class="upload-error-detail">${detail}</div>` : ''}`;
   }
 
-  // File validation
-  if (!file.name.toLowerCase().endsWith('.xml')) {
-    showError('Wrong file type — select the export.xml file, not the ZIP or any other format.');
-    return;
-  }
-  if (file.size === 0) {
-    showError('The selected file is empty.');
-    return;
-  }
-  if (file.size > 600 * 1024 * 1024) {
-    showError(`File is ${(file.size/1024/1024).toFixed(0)} MB — too large. Make sure you selected export.xml from inside the unzipped folder, not the ZIP itself.`);
-    return;
-  }
+  // ── Step 1: Visible validation checks ──────────────────
+  const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
+  const isXml = file.name.toLowerCase().endsWith('.xml');
+  const isNonEmpty = file.size > 0;
+  const isUnderLimit = file.size <= 600 * 1024 * 1024;
 
+  function checkIcon(ok) { return ok ? '✓' : '✗'; }
+  function checkStyle(ok) { return ok ? 'color:var(--green)' : 'color:var(--red)'; }
+
+  el.className = 'status-msg loading';
+  el.innerHTML = `
+    <div style="font-weight:600;margin-bottom:8px">Validating file...</div>
+    <div style="font-size:11px;line-height:2;font-family:'Inter',sans-serif">
+      <div style="${checkStyle(isXml)}">${checkIcon(isXml)} File type: ${isXml ? 'export.xml ✓' : `"${file.name}" — must be a .xml file`}</div>
+      <div style="${checkStyle(isNonEmpty)}">${checkIcon(isNonEmpty)} File size: ${fileSizeMB} MB ${isNonEmpty ? (isUnderLimit ? '(within limit)' : '— exceeds 600 MB limit') : '— file is empty'}</div>
+      <div style="${checkStyle(isUnderLimit)}">${checkIcon(isUnderLimit)} Size limit: ${isUnderLimit ? 'OK' : 'Too large — select export.xml from the unzipped folder, not the ZIP'}</div>
+    </div>`;
+
+  // Short pause so user can read the validation results
+  await new Promise(r => setTimeout(r, 600));
+
+  if (!isXml) { showError('Wrong file type — select export.xml, not a ZIP or other format.'); return; }
+  if (!isNonEmpty) { showError('The selected file is empty.'); return; }
+  if (!isUnderLimit) { showError(`File is ${fileSizeMB} MB — too large (limit 600 MB). Make sure you selected export.xml from inside the unzipped folder.`); return; }
+
+  // ── Step 2: Parse ───────────────────────────────────────
   const startTime = Date.now();
   let timerInterval;
 
@@ -1516,12 +1544,11 @@ async function handleFileUpload(input) {
   }, 1000);
 
   try {
-    // Parse phase — runs entirely in the browser
     const result = await parseHealthXML(file, (pct, label) => {
       renderProgress(Math.round(pct * 0.9), label);
     });
 
-    // Save phase — write parsed JSON to Supabase
+    // ── Step 3: Save to Supabase ────────────────────────
     renderProgress(90, 'Saving to Supabase...');
     if (!currentUser) throw { msg: 'Not signed in — please log in before uploading.', detail: null };
     const { error } = await supabaseClient.from('health_data').upsert({ id: 1, data: result }, { onConflict: 'id' });
@@ -1531,9 +1558,25 @@ async function handleFileUpload(input) {
 
     healthData = result;
     if (currentUser) localStorage.setItem('hasOwnData_' + currentUser.id, '1');
+
+    // ── Success summary ─────────────────────────────────
+    const s = result.summary || {};
+    const days = s.total_days || 0;
+    const avgSteps = s.avg_steps ? (s.avg_steps / 1000).toFixed(1) + 'k' : '–';
+    const avgSleep = s.avg_sleep_hours ? s.avg_sleep_hours.toFixed(1) + 'h' : '–';
+    const totalSecs = elapsed();
+
     el.className = 'status-msg success';
-    el.textContent = `Done! Parsed & saved in ${elapsed()}s — opening dashboard...`;
-    setTimeout(() => navigate('dashboard'), 800);
+    el.innerHTML = `
+      <div style="font-weight:600;margin-bottom:8px">Upload successful! (${totalSecs}s)</div>
+      <div style="font-size:11px;line-height:2;font-family:'Inter',sans-serif">
+        <div style="color:var(--green)">✓ ${days} days of data parsed &amp; saved</div>
+        <div>Avg steps: <strong>${avgSteps}</strong> &nbsp;·&nbsp; Avg sleep: <strong>${avgSleep}</strong></div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">Opening dashboard...</div>`;
+
+    // Refresh the Current Data card to reflect real data
+    setTimeout(() => navigate('dashboard'), 1500);
   } catch(e) {
     clearInterval(timerInterval);
     if (e && e.msg) showError(e.msg, e.detail);

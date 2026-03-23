@@ -311,6 +311,52 @@ body {
 .demo-banner-text span { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; }
 .demo-banner-link { cursor: pointer; color: #fbbf24; font-weight: 600; text-decoration: underline; background: none; border: none; font-size: 13px; padding: 0; font-family: inherit; }
 
+/* ── BYOK early-access banner ────────────────────────────── */
+.byok-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-faint);
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text);
+}
+.byok-banner-icon { font-size: 18px; flex-shrink: 0; color: var(--accent); }
+.byok-banner-text { flex: 1; line-height: 1.4; }
+.byok-banner-text strong { font-weight: 600; }
+.byok-banner-text span { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; }
+.byok-banner-cta {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--accent-border);
+  background: transparent;
+  color: var(--accent);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.byok-banner-cta:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.byok-banner-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.byok-banner-dismiss:hover { color: var(--text); }
+
 /* ── Insight cards ───────────────────────────────────────── */
 .insights-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
 .insight-card {
@@ -617,7 +663,7 @@ const SLEEP_ASLEEP = new Set([
   "HKCategoryValueSleepAnalysisAsleepUnspecified",
 ]);
 
-const LIFE_EVENTS = [
+const DEFAULT_LIFE_EVENTS = [
   {"label": "Finals Week",    "start": "2024-12-09", "end": "2024-12-15", "color": "#ef4444", "icon": "📚"},
   {"label": "Winter Break",   "start": "2024-12-16", "end": "2025-01-05", "color": "#22c55e", "icon": "🏖️"},
   {"label": "Spring Break",   "start": "2025-03-08", "end": "2025-03-16", "color": "#22c55e", "icon": "✈️"},
@@ -628,6 +674,18 @@ const LIFE_EVENTS = [
   {"label": "Winter Break",   "start": "2025-12-15", "end": "2026-01-10", "color": "#22c55e", "icon": "🏖️"},
   {"label": "Spring Semester","start": "2026-01-12", "end": "2026-02-24", "color": "#8b5cf6", "icon": "🎓"},
 ];
+
+function getLifeEvents() {
+  try {
+    const stored = localStorage.getItem('life_events');
+    return stored ? JSON.parse(stored) : DEFAULT_LIFE_EVENTS;
+  } catch { return DEFAULT_LIFE_EVENTS; }
+}
+
+// ── localStorage key constants ────────────────────────────
+const LS_CLAUDE_KEY  = 'userClaudeKey';
+const LS_GEMINI_KEY  = 'userGeminiKey';
+const LS_BYOK_BANNER = 'byokBannerDismissed';
 
 // ── State ─────────────────────────────────────────────────
 let healthData = null;
@@ -731,7 +789,11 @@ const EVENT_COLORS = {
   "Travel":          { bg:"rgba(99,102,241,0.09)",  border:"#6366f1", text:"#6366f1" },
   "default":         { bg:"rgba(148,163,184,0.07)", border:"#64748b", text:"#64748b" }
 };
-function getEC(label) {
+function hexToEventColors(hex) {
+  return { bg: hex + '1a', border: hex, text: hex };
+}
+function getEC(label, color) {
+  if (color) return hexToEventColors(color);
   for (const [k, v] of Object.entries(EVENT_COLORS)) if (label.includes(k)) return v;
   return EVENT_COLORS.default;
 }
@@ -748,16 +810,16 @@ function pct(a, b) { if (!a||!b) return null; return ((a-b)/b*100).toFixed(1); }
 
 function getActiveEvent() {
   const today = new Date().toISOString().slice(0,10);
-  return (healthData.events||[]).find(e => today >= e.start && today <= e.end) || null;
+  return getLifeEvents().find(e => today >= e.start && today <= e.end) || null;
 }
 
 function getEventAnnotations(labels) {
   const annotations = {};
-  (healthData.events||[]).forEach((evt, i) => {
+  getLifeEvents().forEach((evt, i) => {
     const si = labels.findIndex(l => l >= evt.start);
     const ei = labels.findLastIndex(l => l <= evt.end);
     if (si === -1) return;
-    const c = getEC(evt.label);
+    const c = getEC(evt.label, evt.color);
     annotations[`evt${i}`] = {
       type:"box", xMin:si, xMax:ei>si?ei:si+1,
       backgroundColor:c.bg, borderColor:c.border, borderWidth:1,
@@ -768,9 +830,10 @@ function getEventAnnotations(labels) {
 }
 
 function eventLegendHTML() {
-  const events = healthData.events || [];
+  const events = getLifeEvents();
   return `<div class="event-legend">${[...new Set(events.map(e=>e.label))].map(label => {
-    const c = getEC(label); const evt = events.find(e=>e.label===label);
+    const evt = events.find(e=>e.label===label);
+    const c = getEC(label, evt?.color);
     return `<div class="event-badge" style="background:${c.bg};border-color:${c.border};color:${c.text}">${evt?.icon||""} ${label}</div>`;
   }).join('')}</div>`;
 }
@@ -862,18 +925,6 @@ function renderDashboard() {
     return `<div class="bento-delta ${cls}">${arrow} ${Math.abs(d).toFixed(1)}% vs prev 30d</div>`;
   }
 
-  const activeEvent = getActiveEvent();
-  const eventBanner = activeEvent ? (() => {
-    const c = getEC(activeEvent.label);
-    return `<div class="event-banner" style="background:${c.bg};border-color:${c.border};color:${c.text}">
-      <div class="event-banner-icon">${activeEvent.icon||'📅'}</div>
-      <div class="event-banner-text">
-        <strong>${activeEvent.label}</strong>
-        <span>${activeEvent.start} → ${activeEvent.end}</span>
-      </div>
-    </div>`;
-  })() : '';
-
   const hasOwnData = currentUser ? localStorage.getItem('hasOwnData_' + currentUser.id) : true;
   const demoBanner = !hasOwnData ? `
     <div class="demo-banner">
@@ -891,7 +942,6 @@ function renderDashboard() {
     </div>
 
     ${demoBanner}
-    ${eventBanner}
 
     <div class="bento-grid">
       <div class="bento-card bento-steps">
@@ -934,8 +984,6 @@ function renderDashboard() {
         <canvas id="db-sleep"></canvas>
       </div>
     </div>
-
-    ${eventLegendHTML()}
 
     <div class="charts-grid-2">
       <div class="chart-section">
@@ -1190,7 +1238,7 @@ function renderInsights() {
     }
 
     // 3. Life event impact (most stressful event)
-    const events = healthData.events || [];
+    const events = getLifeEvents();
     const finalsEvents = events.filter(e => e.label.includes('Finals'));
     if (finalsEvents.length > 0) {
       const finals = finalsEvents[0];
@@ -1236,6 +1284,7 @@ function renderInsights() {
     </div>`).join('');
 
   document.getElementById('page-content').innerHTML = `
+    ${byokBannerHTML()}
     <div class="page-header">
       <div class="page-title">Insights</div>
       <div class="page-sub">AI-powered analysis of your health patterns</div>
@@ -1329,18 +1378,135 @@ function renderSettings() {
         <div id="upload-status"></div>
       </div>
 
-      <div class="settings-card">
-        <h3>Life Events</h3>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">Events are defined in <code style="font-family:'Inter',sans-serif;font-size:11px;color:var(--accent)">parse_health.py</code> under <code style="font-family:'Inter',sans-serif;font-size:11px;color:var(--accent)">LIFE_EVENTS</code>.</p>
-        <div style="max-height:180px;overflow-y:auto">
-          ${(healthData?.events||[]).map(e=>{
-            const c=getEC(e.label);
-            return `<div class="settings-row"><span style="color:${c.text};font-size:11px">${e.icon||''} ${e.label}</span><span class="settings-row-label">${e.start} → ${e.end}</span></div>`;
-          }).join('')}
+      <div class="settings-card" style="grid-column:1/-1">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <h3 style="margin-bottom:0">Life Events</h3>
+          <button onclick="openEventForm()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer;font-weight:600">+ Add Event</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Events provide context to the AI chat analyst and appear on chart pages. Changes are saved to your browser.</p>
+        <div id="life-events-list" style="max-height:240px;overflow-y:auto">
+          ${eventsListHTML(getLifeEvents())}
+        </div>
+        <div id="event-form" style="display:none;margin-top:12px;padding:14px;background:rgba(148,163,184,0.05);border:1px solid var(--border);border-radius:8px">
+          <input type="hidden" id="ef-index" value="-1">
+          <div style="display:grid;grid-template-columns:1fr 70px;gap:8px;margin-bottom:8px">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Label</div>
+              <input id="ef-label" type="text" placeholder="e.g. Finals Week" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;box-sizing:border-box;outline:none">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Icon</div>
+              <input id="ef-icon" type="text" placeholder="📚" maxlength="4" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;box-sizing:border-box;text-align:center;outline:none">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 72px;gap:8px;margin-bottom:12px">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Start Date</div>
+              <input id="ef-start" type="date" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;box-sizing:border-box;outline:none">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">End Date</div>
+              <input id="ef-end" type="date" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;box-sizing:border-box;outline:none">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Color</div>
+              <input id="ef-color" type="color" value="#8b5cf6" style="width:100%;height:34px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 4px;cursor:pointer;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="saveEventForm()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer;font-weight:600">Save</button>
+            <button onclick="closeEventForm()" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:6px 16px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
   `;
+}
+
+// ── Life Events CRUD ──────────────────────────────────────
+function eventsListHTML(events) {
+  if (!events.length) return '<div style="font-size:12px;color:var(--muted);padding:8px 0">No events yet. Add one above.</div>';
+  return events.map((e, i) => {
+    const c = getEC(e.label, e.color);
+    return `<div class="settings-row" style="align-items:center">
+      <span style="color:${c.text};font-size:12px;font-weight:500">${e.icon||''} ${e.label}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="settings-row-label">${e.start} → ${e.end}</span>
+        <button onclick="openEventForm(${i})" title="Edit" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:0 2px;line-height:1">✏️</button>
+        <button onclick="deleteLifeEvent(${i})" title="Delete" style="background:transparent;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:0 2px;line-height:1;font-weight:700">×</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function saveLifeEvents(events) {
+  localStorage.setItem('life_events', JSON.stringify(events));
+}
+
+function deleteLifeEvent(index) {
+  const events = getLifeEvents();
+  events.splice(index, 1);
+  saveLifeEvents(events);
+  const list = document.getElementById('life-events-list');
+  if (list) list.innerHTML = eventsListHTML(getLifeEvents());
+}
+
+function openEventForm(index) {
+  const form = document.getElementById('event-form');
+  if (!form) return;
+  const idxInput = document.getElementById('ef-index');
+  idxInput.value = (index != null && index >= 0) ? index : -1;
+  if (index != null && index >= 0) {
+    const e = getLifeEvents()[index];
+    if (e) {
+      document.getElementById('ef-label').value = e.label || '';
+      document.getElementById('ef-icon').value = e.icon || '';
+      document.getElementById('ef-start').value = e.start || '';
+      document.getElementById('ef-end').value = e.end || '';
+      document.getElementById('ef-color').value = e.color || '#8b5cf6';
+    }
+  } else {
+    document.getElementById('ef-label').value = '';
+    document.getElementById('ef-icon').value = '';
+    document.getElementById('ef-start').value = '';
+    document.getElementById('ef-end').value = '';
+    document.getElementById('ef-color').value = '#8b5cf6';
+  }
+  form.style.display = 'block';
+  document.getElementById('ef-label').focus();
+}
+
+function closeEventForm() {
+  const form = document.getElementById('event-form');
+  if (form) form.style.display = 'none';
+}
+
+function saveEventForm() {
+  const label = document.getElementById('ef-label').value.trim();
+  const icon  = document.getElementById('ef-icon').value.trim();
+  const start = document.getElementById('ef-start').value;
+  const end   = document.getElementById('ef-end').value;
+  const color = document.getElementById('ef-color').value;
+  if (!label || !start || !end) {
+    alert('Please fill in Label, Start Date, and End Date.');
+    return;
+  }
+  if (start > end) {
+    alert('Start date must be before end date.');
+    return;
+  }
+  const events = getLifeEvents();
+  const index = parseInt(document.getElementById('ef-index').value);
+  const newEvent = { label, icon, start, end, color };
+  if (index >= 0 && index < events.length) {
+    events[index] = newEvent;
+  } else {
+    events.push(newEvent);
+  }
+  saveLifeEvents(events);
+  closeEventForm();
+  const list = document.getElementById('life-events-list');
+  if (list) list.innerHTML = eventsListHTML(getLifeEvents());
 }
 
 // Settings actions
@@ -1482,7 +1648,7 @@ async function parseHealthXML(file, onProgress) {
   return {
     daily: filtered,
     summary,
-    events: LIFE_EVENTS,
+    events: getLifeEvents(),
     generated_at: new Date().toISOString(),
   };
 }
@@ -1582,6 +1748,29 @@ async function handleFileUpload(input) {
     if (e && e.msg) showError(e.msg, e.detail);
     else showError('Unexpected error', e.message || String(e));
   }
+}
+
+// ── BYOK Banner ───────────────────────────────────────────
+function byokBannerHTML() {
+  const hasClaude = !!localStorage.getItem(LS_CLAUDE_KEY);
+  const hasGemini = !!localStorage.getItem(LS_GEMINI_KEY);
+  const dismissed = !!localStorage.getItem(LS_BYOK_BANNER);
+  if (hasClaude || hasGemini || dismissed) return '';
+  return `
+    <div class="byok-banner" id="byok-banner">
+      <div class="byok-banner-icon">✦</div>
+      <div class="byok-banner-text">
+        <strong>AI Insights — Early Access</strong>
+        <span>Bring your own Claude or Gemini API key to unlock AI-powered analysis of your health data.</span>
+      </div>
+      <button class="byok-banner-cta" onclick="navigate('settings')">Add API Key →</button>
+      <button class="byok-banner-dismiss" onclick="dismissByokBanner()" title="Dismiss">✕</button>
+    </div>`;
+}
+function dismissByokBanner() {
+  localStorage.setItem(LS_BYOK_BANNER, '1');
+  const el = document.getElementById('byok-banner');
+  if (el) el.remove();
 }
 
 // ── Provider / Chat ───────────────────────────────────────
@@ -1685,7 +1874,7 @@ async function sendMessage() {
   try {
     const resp = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ message:msg, history:chatHistory.slice(-10), provider:currentProvider })
+      body: JSON.stringify({ message:msg, history:chatHistory.slice(-10), provider:currentProvider, events:getLifeEvents() })
     });
     const data = await resp.json();
     removeTyping();

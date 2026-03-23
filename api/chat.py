@@ -32,9 +32,10 @@ def load_health_data():
         return json.load(f)
 
 
-def build_system_prompt(health_data):
+def build_system_prompt(health_data, events=None):
     summary = health_data.get("summary", {})
-    events = health_data.get("events", [])
+    if events is None:
+        events = health_data.get("events", [])
     daily = health_data.get("daily", {})
 
     daily_list = list(daily.values())[-90:]
@@ -168,6 +169,11 @@ class handler(BaseHTTPRequestHandler):
         message  = body.get("message", "")
         history  = body.get("history", [])
         provider = body.get("provider", "claude")
+        events   = body.get("events", None)
+
+        if events is not None:
+            health_data = dict(health_data)
+            health_data["events"] = events
 
         if provider == "gemini":
             reply = chat_with_gemini(message, history, health_data)

@@ -11,6 +11,13 @@ ROOT = pathlib.Path(__file__).parent.parent
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 VERTEX_API_BASE = "https://aiplatform.googleapis.com/v1"
+DEFAULT_VERTEX_MODEL = "gemini-2.5-flash"
+RETIRED_VERTEX_MODEL_UPGRADES = {
+    "gemini-2.0-flash": "gemini-2.5-flash",
+    "gemini-2.0-flash-001": "gemini-2.5-flash",
+    "gemini-2.0-flash-lite": "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite-001": "gemini-2.5-flash-lite",
+}
 
 
 def load_health_data():
@@ -92,7 +99,8 @@ If asked something you don't have data for, say so clearly."""
 
 
 def get_vertex_model():
-    return os.environ.get("VERTEX_MODEL", "gemini-2.0-flash")
+    configured = os.environ.get("VERTEX_MODEL", DEFAULT_VERTEX_MODEL).strip() or DEFAULT_VERTEX_MODEL
+    return RETIRED_VERTEX_MODEL_UPGRADES.get(configured, configured)
 
 
 def extract_vertex_text(data):

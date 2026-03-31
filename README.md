@@ -43,7 +43,7 @@ Set these in your Vercel project:
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon public key |
 | `VERTEX_API_KEY` | Server-side Vertex AI key for the shared "Somada AI" mode |
-| `VERTEX_MODEL` | Optional. Defaults to `gemini-2.0-flash` |
+| `VERTEX_MODEL` | Optional. Defaults to `gemini-2.5-flash` |
 
 `VERTEX_API_KEY` is optional if you only want charts. If you do not set it, users can still use chat by saving their own Vertex AI API key in Settings.
 
@@ -73,21 +73,21 @@ Windows Command Prompt:
 
 ```bat
 set VERTEX_API_KEY=your_key_here
-set VERTEX_MODEL=gemini-2.0-flash
+set VERTEX_MODEL=gemini-2.5-flash
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:VERTEX_API_KEY="your_key_here"
-$env:VERTEX_MODEL="gemini-2.0-flash"
+$env:VERTEX_MODEL="gemini-2.5-flash"
 ```
 
 Or create a `.env` file:
 
 ```dotenv
 VERTEX_API_KEY=your_key_here
-VERTEX_MODEL=gemini-2.0-flash
+VERTEX_MODEL=gemini-2.5-flash
 ```
 
 ### 2. Parse your health data

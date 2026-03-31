@@ -47,7 +47,7 @@ health-dashboard/
 | `SUPABASE_URL` | `api/health.py`, `api/chat.py`, `api/supabase_config.py` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | same as above | Supabase anon public key |
 | `VERTEX_API_KEY` | `api/chat.py`, `server.py` | Shared server-side Vertex AI key |
-| `VERTEX_MODEL` | `api/chat.py`, `server.py` | Optional model override, defaults to `gemini-2.0-flash` |
+| `VERTEX_MODEL` | `api/chat.py`, `server.py` | Optional model override, defaults to `gemini-2.5-flash` |
 
 Users can also save their own Vertex AI API key in the browser from Settings. The frontend stores it in localStorage and includes it with chat requests when the user selects the BYOK mode.
 
@@ -155,7 +155,7 @@ Returns the current chat configuration:
 {
   "chat": {
     "serverVertex": true,
-    "serverModel": "gemini-2.0-flash",
+    "serverModel": "gemini-2.5-flash",
     "byokSupported": true
   }
 }

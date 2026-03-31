@@ -733,7 +733,7 @@ let supabaseClient = null;
 let currentUser = null;
 let authMode = 'login'; // 'login' | 'signup'
 let currentChatMode = 'server';
-let chatConfig = { serverVertex: false, serverModel: 'gemini-2.0-flash', byokSupported: true };
+let chatConfig = { serverVertex: false, serverModel: 'gemini-2.5-flash', byokSupported: true };
 let chatHistory = [];
 
 // ── Theme ─────────────────────────────────────────────────
@@ -1445,7 +1445,7 @@ function renderSettings() {
         <div class="settings-row"><span class="settings-row-label">Active mode</span><span class="settings-row-value ${activeModeClass}">${activeModeText}</span></div>
         <div class="settings-row"><span class="settings-row-label">Backend Vertex key</span><span class="settings-row-value ${serverKeyClass}">${serverKeyText}</span></div>
         <div class="settings-row"><span class="settings-row-label">Saved personal key</span><span class="settings-row-value ${personalKeyClass}">${personalKeyText}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Model</span><span class="settings-row-value">${chatConfig.serverModel || 'gemini-2.0-flash'}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Model</span><span class="settings-row-value">${chatConfig.serverModel || 'gemini-2.5-flash'}</span></div>
         <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-top:14px">
           <div>
             <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Your Vertex AI API Key</div>
@@ -2162,7 +2162,7 @@ async function loadAppData() {
     ]);
     const hd = await healthResp.json();
     const config = await configResp.json();
-    chatConfig = config.chat || { serverVertex:false, serverModel:'gemini-2.0-flash', byokSupported:true };
+    chatConfig = config.chat || { serverVertex:false, serverModel:'gemini-2.5-flash', byokSupported:true };
     if (!hd.error) healthData = hd;
     syncChatMode();
   } catch(e) { /* server not running */ }

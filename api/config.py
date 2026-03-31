@@ -5,10 +5,17 @@ import os
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        configured_model = (os.environ.get("VERTEX_MODEL") or "").strip()
+        retired_model_upgrades = {
+            "gemini-2.0-flash": "gemini-2.5-flash",
+            "gemini-2.0-flash-001": "gemini-2.5-flash",
+            "gemini-2.0-flash-lite": "gemini-2.5-flash-lite",
+            "gemini-2.0-flash-lite-001": "gemini-2.5-flash-lite",
+        }
         data = {
             "chat": {
                 "serverVertex": bool(os.environ.get("VERTEX_API_KEY")),
-                "serverModel": os.environ.get("VERTEX_MODEL", "gemini-2.0-flash"),
+                "serverModel": retired_model_upgrades.get(configured_model, configured_model or "gemini-2.5-flash"),
                 "byokSupported": True,
             }
         }

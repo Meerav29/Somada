@@ -4,11 +4,13 @@ import os
 import pathlib
 import urllib.request
 import urllib.error
+import urllib.parse
 
 ROOT = pathlib.Path(__file__).parent.parent
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+VERTEX_API_BASE = "https://aiplatform.googleapis.com/v1"
 
 
 def load_health_data():
@@ -89,58 +91,50 @@ Keep answers concise but specific - reference actual dates and numbers when rele
 If asked something you don't have data for, say so clearly."""
 
 
-def chat_with_claude(message, history, health_data):
-    api_key = os.environ.get("CLAUDE_API_KEY", "")
+def get_vertex_model():
+    return os.environ.get("VERTEX_MODEL", "gemini-2.0-flash")
+
+
+def extract_vertex_text(data):
+    for candidate in data.get("candidates", []):
+        parts = ((candidate.get("content") or {}).get("parts") or [])
+        text = "".join(part.get("text", "") for part in parts if part.get("text")).strip()
+        if text:
+            return text
+
+        finish_reason = candidate.get("finishReason") or candidate.get("finish_reason")
+        if finish_reason == "SAFETY":
+            return "Vertex AI blocked the response for safety reasons."
+
+    prompt_feedback = data.get("promptFeedback") or data.get("prompt_feedback") or {}
+    block_reason = prompt_feedback.get("blockReason") or prompt_feedback.get("block_reason")
+    if block_reason:
+        return f"Vertex AI blocked this prompt ({block_reason})."
+
+    return "Vertex AI returned an empty response."
+
+
+def chat_with_vertex(message, history, health_data, api_key, model):
     if not api_key:
-        return "Error: CLAUDE_API_KEY not set."
-
-    messages = [{"role": h["role"], "content": h["content"]} for h in history]
-    messages.append({"role": "user", "content": message})
-
-    payload = {
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": 1024,
-        "system": build_system_prompt(health_data),
-        "messages": messages,
-    }
-
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=json.dumps(payload).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read())["content"][0]["text"]
-    except urllib.error.HTTPError as e:
-        return f"API Error {e.code}: {e.read().decode()}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-
-def chat_with_gemini(message, history, health_data):
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key:
-        return "Error: GEMINI_API_KEY not set."
+        return "Error: VERTEX_API_KEY not set."
 
     contents = []
     for h in history:
-        role = "model" if h["role"] == "assistant" else h["role"]
-        contents.append({"role": role, "parts": [{"text": h["content"]}]})
+        content = (h.get("content") or "").strip()
+        if not content:
+            continue
+        role = "model" if h.get("role") == "assistant" else "user"
+        contents.append({"role": role, "parts": [{"text": content}]})
     contents.append({"role": "user", "parts": [{"text": message}]})
 
     payload = {
-        "system_instruction": {"parts": [{"text": build_system_prompt(health_data)}]},
+        "systemInstruction": {"parts": [{"text": build_system_prompt(health_data)}]},
         "contents": contents,
         "generationConfig": {"maxOutputTokens": 1024},
     }
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    model_path = f"publishers/google/models/{urllib.parse.quote(model, safe='')}:generateContent"
+    url = f"{VERTEX_API_BASE}/{model_path}?{urllib.parse.urlencode({'key': api_key})}"
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode(),
@@ -149,11 +143,18 @@ def chat_with_gemini(message, history, health_data):
     )
     try:
         with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read())["candidates"][0]["content"]["parts"][0]["text"]
+            return extract_vertex_text(json.loads(resp.read()))
     except urllib.error.HTTPError as e:
         return f"API Error {e.code}: {e.read().decode()}"
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+def resolve_chat_api_key(body):
+    mode = body.get("chatMode", "server")
+    if mode == "byok":
+        return (body.get("vertexApiKey") or "").strip(), "byok"
+    return os.environ.get("VERTEX_API_KEY", "").strip(), "server"
 
 
 class handler(BaseHTTPRequestHandler):
@@ -168,19 +169,20 @@ class handler(BaseHTTPRequestHandler):
 
         message  = body.get("message", "")
         history  = body.get("history", [])
-        provider = body.get("provider", "claude")
         events   = body.get("events", None)
+        api_key, mode = resolve_chat_api_key(body)
+        model = get_vertex_model()
 
         if events is not None:
             health_data = dict(health_data)
             health_data["events"] = events
 
-        if provider == "gemini":
-            reply = chat_with_gemini(message, history, health_data)
+        if mode == "byok" and not api_key:
+            reply = "Add your Vertex AI API key in Settings before using your own key."
         else:
-            reply = chat_with_claude(message, history, health_data)
+            reply = chat_with_vertex(message, history, health_data, api_key, model)
 
-        self._send_json({"reply": reply, "provider": provider})
+        self._send_json({"reply": reply, "mode": mode, "model": model})
 
     def _send_json(self, data):
         response = json.dumps(data).encode()

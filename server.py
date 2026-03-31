@@ -1,6 +1,6 @@
 """
 Somada Backend
-Serves health data and proxies Claude and Gemini APIs for the AI chat.
+Serves health data and proxies Vertex AI for the AI chat.
 Usage: python server.py
 """
 
@@ -12,7 +12,7 @@ import subprocess
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime
+import urllib.parse
 
 def load_env(path=".env"):
     """Load KEY=value pairs from a .env file into os.environ."""
@@ -28,8 +28,7 @@ def load_env(path=".env"):
 
 load_env()
 
-CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+VERTEX_API_BASE = "https://aiplatform.googleapis.com/v1"
 HEALTH_DATA_FILE = "health_data.json"   
 
 def load_health_data():
@@ -97,65 +96,51 @@ When you notice a trend, explain what it likely means physiologically.
 Keep answers concise but specific - reference actual dates and numbers when relevant.
 If asked something you don't have data for, say so clearly."""
 
-def chat_with_claude(message, history, health_data):
-    if not CLAUDE_API_KEY:
-        return "Error: CLAUDE_API_KEY not set."
+def get_vertex_model():
+    return os.environ.get("VERTEX_MODEL", "gemini-2.0-flash")
+
+
+def extract_vertex_text(data):
+    for candidate in data.get("candidates", []):
+        parts = ((candidate.get("content") or {}).get("parts") or [])
+        text = "".join(part.get("text", "") for part in parts if part.get("text")).strip()
+        if text:
+            return text
+
+        finish_reason = candidate.get("finishReason") or candidate.get("finish_reason")
+        if finish_reason == "SAFETY":
+            return "Vertex AI blocked the response for safety reasons."
+
+    prompt_feedback = data.get("promptFeedback") or data.get("prompt_feedback") or {}
+    block_reason = prompt_feedback.get("blockReason") or prompt_feedback.get("block_reason")
+    if block_reason:
+        return f"Vertex AI blocked this prompt ({block_reason})."
+
+    return "Vertex AI returned an empty response."
+
+
+def chat_with_vertex(message, history, health_data, api_key, model):
+    if not api_key:
+        return "Error: VERTEX_API_KEY not set."
 
     system_prompt = build_system_prompt(health_data)
-
-    messages = []
-    for h in history:
-        messages.append({"role": h["role"], "content": h["content"]})
-    messages.append({"role": "user", "content": message})
-
-    payload = {
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": 1024,
-        "system": system_prompt,
-        "messages": messages
-    }
-
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=json.dumps(payload).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": CLAUDE_API_KEY,
-            "anthropic-version": "2023-06-01"
-        },
-        method="POST"
-    )
-
-    try:
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read())
-            return data["content"][0]["text"]
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode()
-        return f"API Error {e.code}: {error_body}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-def chat_with_gemini(message, history, health_data):
-    if not GEMINI_API_KEY:
-        return "Error: GEMINI_API_KEY not set."
-
-    system_prompt = build_system_prompt(health_data)
-
-    # Gemini uses "model" instead of "assistant" for role names
     contents = []
     for h in history:
-        role = "model" if h["role"] == "assistant" else h["role"]
-        contents.append({"role": role, "parts": [{"text": h["content"]}]})
+        content = (h.get("content") or "").strip()
+        if not content:
+            continue
+        role = "model" if h.get("role") == "assistant" else "user"
+        contents.append({"role": role, "parts": [{"text": content}]})
     contents.append({"role": "user", "parts": [{"text": message}]})
 
     payload = {
-        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": contents,
         "generationConfig": {"maxOutputTokens": 1024}
     }
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    model_path = f"publishers/google/models/{urllib.parse.quote(model, safe='')}:generateContent"
+    url = f"{VERTEX_API_BASE}/{model_path}?{urllib.parse.urlencode({'key': api_key})}"
 
     req = urllib.request.Request(
         url,
@@ -167,12 +152,19 @@ def chat_with_gemini(message, history, health_data):
     try:
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read())
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            return extract_vertex_text(data)
     except urllib.error.HTTPError as e:
         error_body = e.read().decode()
         return f"API Error {e.code}: {error_body}"
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+def resolve_chat_api_key(body):
+    mode = body.get("chatMode", "server")
+    if mode == "byok":
+        return (body.get("vertexApiKey") or "").strip(), "byok"
+    return os.environ.get("VERTEX_API_KEY", "").strip(), "server"
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -195,9 +187,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json(self.health_data if self.health_data else {"error": "No health data found. Run parse_health.py first."})
         elif self.path == "/api/config":
             self.send_json({
-                "providers": {
-                    "claude": bool(CLAUDE_API_KEY),
-                    "gemini": bool(GEMINI_API_KEY),
+                "chat": {
+                    "serverVertex": bool(os.environ.get("VERTEX_API_KEY")),
+                    "serverModel": get_vertex_model(),
+                    "byokSupported": True,
                 }
             })
         elif self.path == "/" or self.path == "/index.html":
@@ -235,18 +228,25 @@ class Handler(SimpleHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             message = body.get("message", "")
             history = body.get("history", [])
-            provider = body.get("provider", "claude")
+            events = body.get("events", None)
+            api_key, mode = resolve_chat_api_key(body)
+            model = get_vertex_model()
 
             if not self.health_data:
                 self.send_json({"reply": "No health data loaded. Please run parse_health.py first."})
                 return
 
-            if provider == "gemini":
-                reply = chat_with_gemini(message, history, self.health_data)
-            else:
-                reply = chat_with_claude(message, history, self.health_data)
+            health_data = self.health_data
+            if events is not None:
+                health_data = dict(self.health_data)
+                health_data["events"] = events
 
-            self.send_json({"reply": reply, "provider": provider})
+            if mode == "byok" and not api_key:
+                reply = "Add your Vertex AI API key in Settings before using your own key."
+            else:
+                reply = chat_with_vertex(message, history, health_data, api_key, model)
+
+            self.send_json({"reply": reply, "mode": mode, "model": model})
         else:
             self.send_response(404)
             self.end_headers()
@@ -268,16 +268,16 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 if __name__ == "__main__":
     port = 8080
-    claude_status = "configured" if CLAUDE_API_KEY else "NOT SET"
-    gemini_status = "configured" if GEMINI_API_KEY else "NOT SET"
+    vertex_status = "configured" if os.environ.get("VERTEX_API_KEY") else "NOT SET"
+    vertex_model = get_vertex_model()
     print(f"""
 Somada Server
 =======================
 Starting on http://localhost:{port}
 
 API Keys:
-  CLAUDE_API_KEY : {claude_status}
-  GEMINI_API_KEY : {gemini_status}
+  VERTEX_API_KEY : {vertex_status}
+  VERTEX_MODEL   : {vertex_model}
 
 Make sure you have run parse_health.py to generate health_data.json
 """)

@@ -6,9 +6,10 @@ import os
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         data = {
-            "providers": {
-                "claude": bool(os.environ.get("CLAUDE_API_KEY")),
-                "gemini": bool(os.environ.get("GEMINI_API_KEY")),
+            "chat": {
+                "serverVertex": bool(os.environ.get("VERTEX_API_KEY")),
+                "serverModel": os.environ.get("VERTEX_MODEL", "gemini-2.0-flash"),
+                "byokSupported": True,
             }
         }
         self._send_json(data)

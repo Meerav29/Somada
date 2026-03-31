@@ -1,0 +1,7 @@
+export.xml
+export_cda.xml
+__pycache__/
+*.pyc
+*.pyo
+.env
+.git

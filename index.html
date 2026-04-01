@@ -724,6 +724,7 @@ function getLifeEvents() {
 const LS_VERTEX_KEY  = 'userVertexApiKey';
 const LS_CHAT_MODE   = 'chatMode';
 const LS_BYOK_BANNER = 'byokBannerDismissed';
+const DATA_RETENTION_MONTHS = 18;
 
 // ── State ─────────────────────────────────────────────────
 let healthData = null;
@@ -1620,6 +1621,12 @@ function _getAttr(attrs, name) {
   return m ? m[1] : null;
 }
 
+function getRetentionCutoffISO() {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - DATA_RETENTION_MONTHS);
+  return cutoff.toISOString().slice(0, 10);
+}
+
 async function parseHealthXML(file, onProgress) {
   onProgress(0, 'Reading file...');
   const text = await file.text();
@@ -1700,10 +1707,8 @@ async function parseHealthXML(file, onProgress) {
     };
   }
 
-  // Filter to last 8 months
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - 8);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  // Keep enough history for monthly and life-event comparisons in chat.
+  const cutoffStr = getRetentionCutoffISO();
   const filtered = Object.fromEntries(Object.entries(aggregated).filter(([k]) => k >= cutoffStr));
 
   onProgress(90, 'Computing summary...');
@@ -2013,6 +2018,7 @@ async function sendMessage() {
   }
   const msg = input.value.trim();
   if (!msg) return;
+  const requestHistory = chatHistory.slice(-10);
   input.value=''; input.style.height='40px'; btn.disabled=true;
   appendMessage('user', msg);
   showTyping();
@@ -2022,7 +2028,7 @@ async function sendMessage() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         message: msg,
-        history: chatHistory.slice(-10),
+        history: requestHistory,
         chatMode: currentChatMode,
         vertexApiKey: currentChatMode === 'byok' ? getUserVertexKey() : '',
         events: getLifeEvents()

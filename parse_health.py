@@ -22,6 +22,7 @@ LIFE_EVENTS = [
     {"label": "Winter Break", "start": "2025-12-15", "end": "2026-01-10", "color": "#22c55e", "icon": "🏖️"},
     {"label": "Spring Semester", "start": "2026-01-12", "end": "2026-02-24", "color": "#8b5cf6", "icon": "🎓"},
 ]
+DATA_RETENTION_MONTHS = 18
 
 METRIC_MAP = {
     "HKQuantityTypeIdentifierStepCount": "steps",
@@ -188,8 +189,8 @@ def main():
     xml_path = sys.argv[1]
     data = parse_health_xml(xml_path)
 
-    # Filter to last 8 months for good coverage
-    filtered = get_date_range_last_n_months(data, months=8)
+    # Keep enough history to cover the academic events used in chat and insights.
+    filtered = get_date_range_last_n_months(data, months=DATA_RETENTION_MONTHS)
 
     summary = compute_summary_stats(filtered)
 

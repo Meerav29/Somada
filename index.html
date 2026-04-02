@@ -734,7 +734,7 @@ let supabaseClient = null;
 let currentUser = null;
 let authMode = 'login'; // 'login' | 'signup'
 let currentChatMode = 'server';
-let chatConfig = { serverVertex: false, serverModel: 'gemini-2.5-flash', byokSupported: true };
+let chatConfig = { serverVertex: false, serverModel: 'gemini-2.5-flash', serverClaude: false, claudeModel: 'claude-sonnet-4-6', byokSupported: true };
 let chatHistory = [];
 
 // ── Theme ─────────────────────────────────────────────────
@@ -1327,12 +1327,12 @@ function renderInsights() {
     ${byokBannerHTML()}
     <div class="page-header">
       <div class="page-title">Insights</div>
-      <div class="page-sub">AI-powered analysis of your health patterns with Vertex AI</div>
+      <div class="page-sub">AI-powered analysis of your health patterns</div>
     </div>
     <div class="insights-grid">${insightCards}</div>
     <div class="chart-header" style="margin-bottom:12px">
       <span class="chart-title">Ask the data</span>
-      <button onclick="navigate('settings')" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer">AI Settings</button>
+      <div id="model-selector" style="display:flex;gap:6px"></div>
     </div>
     <div class="chat-container">
       <div class="chat-top">
@@ -1357,11 +1357,32 @@ function renderInsights() {
   `;
 
   syncChatMode();
+  renderModelSelector();
 
   // Re-populate chat history
   const msgs = document.getElementById('chat-messages');
   chatHistory.forEach(m => appendMessageEl(msgs, m.role === 'assistant' ? 'ai' : m.role, m.content));
   msgs.scrollTop = msgs.scrollHeight;
+}
+
+function renderModelSelector() {
+  const el = document.getElementById('model-selector');
+  if (!el) return;
+  const canVertex = !!chatConfig.serverVertex;
+  const canClaude = !!chatConfig.serverClaude;
+  const canByok   = hasUserVertexKey();
+  const btnStyle = (active, enabled) => {
+    const base = 'border-radius:7px;padding:5px 12px;font-size:11px;font-family:\'Inter\',sans-serif;cursor:pointer;font-weight:500;transition:all 0.15s';
+    if (!enabled) return `${base};background:transparent;color:var(--muted);border:1px solid var(--border);opacity:0.4;cursor:not-allowed`;
+    if (active)   return `${base};background:var(--accent);color:#fff;border:1px solid var(--accent)`;
+    return `${base};background:transparent;color:var(--muted);border:1px solid var(--border)`;
+  };
+  const byokTitle = canByok ? 'BYOK' : 'BYOK — save a Vertex key in Settings';
+  el.innerHTML = `
+    <button style="${btnStyle(currentChatMode==='server', canVertex)}" ${canVertex?`onclick="setChatMode('server')"`:''} title="Somada Vertex AI">Vertex</button>
+    <button style="${btnStyle(currentChatMode==='claude', canClaude)}" ${canClaude?`onclick="setChatMode('claude')"`:''} title="Somada Claude AI">Claude</button>
+    <button style="${btnStyle(currentChatMode==='byok', canByok)}"   ${canByok?`onclick="setChatMode('byok')"`:''} title="${byokTitle}">BYOK</button>
+  `;
 }
 
 // ── PAGE: Settings ────────────────────────────────────────
@@ -1386,20 +1407,23 @@ function renderSettings() {
 
   // For demo users show a note instead of stats that belong to someone else
   const demoNote = isDemo ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:6px;font-size:11px;color:#fbbf24;line-height:1.5">You're viewing sample data. Upload your own Apple Health export below to see your real stats.</div>` : '';
-  const activeModeText = currentChatMode === 'byok' ? 'Your Vertex key' : 'Somada AI';
-  const activeModeClass = currentChatMode === 'byok' ? 'warn' : (chatConfig.serverVertex ? 'good' : 'warn');
-  const chatStatusText = chatReady ? 'Ready' : 'Needs a Vertex API key';
+  const activeModeText = currentChatMode === 'byok' ? 'Your Vertex key' : currentChatMode === 'claude' ? 'Claude' : 'Somada AI (Vertex)';
+  const activeModeClass = currentChatMode === 'byok' ? 'warn' : (chatReady ? 'good' : 'warn');
+  const chatStatusText = chatReady ? 'Ready' : 'Needs an AI API key';
   const chatStatusClass = chatReady ? 'good' : 'bad';
-  const serverKeyText = chatConfig.serverVertex ? 'Configured' : 'Not configured';
-  const serverKeyClass = chatConfig.serverVertex ? 'good' : 'bad';
+  const serverVertexText = chatConfig.serverVertex ? 'Configured' : 'Not configured';
+  const serverVertexClass = chatConfig.serverVertex ? 'good' : 'bad';
+  const serverClaudeText = chatConfig.serverClaude ? 'Configured' : 'Not configured';
+  const serverClaudeClass = chatConfig.serverClaude ? 'good' : 'bad';
   const personalKeyText = hasUserVertexKey ? 'Saved in this browser' : 'Not saved';
   const personalKeyClass = hasUserVertexKey ? 'good' : 'bad';
   const serverChoiceClass = currentChatMode === 'server' ? ' active' : '';
+  const claudeChoiceClass = currentChatMode === 'claude' ? ' active' : '';
   const byokChoiceClass = currentChatMode === 'byok' ? ' active' : '';
   const keyPlaceholder = hasUserVertexKey ? 'Saved key already available in this browser' : 'Paste your Vertex AI API key';
-  const aiNote = chatConfig.serverVertex
-    ? 'Somada AI uses the project-level Vertex AI key from the server. Switch to your own key if you want to use your own quota.'
-    : 'Somada AI is not configured on the server yet. Add your own Vertex AI API key below if you want chat to work right now.';
+  const aiNote = (chatConfig.serverVertex || chatConfig.serverClaude)
+    ? 'Choose between Somada\'s server-side Vertex or Claude key, or use your own Vertex key from this browser.'
+    : 'No server-side AI keys are configured yet. Add your own Vertex AI API key below to enable chat.';
 
   document.getElementById('page-content').innerHTML = `
     <div class="page-header">
@@ -1433,21 +1457,27 @@ function renderSettings() {
           <h3 style="margin-bottom:0">AI Chat</h3>
           <span class="settings-row-value ${chatStatusClass}">${chatStatusText}</span>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Chat now uses Vertex AI only. Choose Somada's shared backend key or save your own Vertex AI API key for this browser.</p>
-        <div class="settings-choice-grid">
-          <button class="settings-choice${serverChoiceClass}" onclick="setChatMode('server')">
-            <div class="settings-choice-title">Somada AI</div>
-            <div class="settings-row-label">Uses the server-side <code style="font-family:'Inter',sans-serif;font-size:10px">VERTEX_API_KEY</code>.</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Choose Somada's server-side Vertex or Claude key, or use your own Vertex AI key from this browser.</p>
+        <div class="settings-choice-grid" style="grid-template-columns:repeat(3,1fr)">
+          <button class="settings-choice${serverChoiceClass}" onclick="setChatMode('server')" ${!chatConfig.serverVertex ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+            <div class="settings-choice-title">Vertex</div>
+            <div class="settings-row-label">Server-side <code style="font-family:'Inter',sans-serif;font-size:10px">VERTEX_API_KEY</code>. ${serverVertexText}.</div>
           </button>
-          <button class="settings-choice${byokChoiceClass}" onclick="setChatMode('byok')">
-            <div class="settings-choice-title">Your Vertex Key</div>
-            <div class="settings-row-label">Uses your own Vertex AI quota from this browser.</div>
+          <button class="settings-choice${claudeChoiceClass}" onclick="setChatMode('claude')" ${!chatConfig.serverClaude ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+            <div class="settings-choice-title">Claude</div>
+            <div class="settings-row-label">Server-side <code style="font-family:'Inter',sans-serif;font-size:10px">ANTHROPIC_API_KEY</code>. ${serverClaudeText}.</div>
+          </button>
+          <button class="settings-choice${byokChoiceClass}" onclick="setChatMode('byok')" ${!hasUserVertexKey ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+            <div class="settings-choice-title">BYOK</div>
+            <div class="settings-row-label">Your own Vertex AI key from this browser. ${personalKeyText}.</div>
           </button>
         </div>
         <div class="settings-row"><span class="settings-row-label">Active mode</span><span class="settings-row-value ${activeModeClass}">${activeModeText}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Backend Vertex key</span><span class="settings-row-value ${serverKeyClass}">${serverKeyText}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Saved personal key</span><span class="settings-row-value ${personalKeyClass}">${personalKeyText}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Model</span><span class="settings-row-value">${chatConfig.serverModel || 'gemini-2.5-flash'}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Server Vertex key</span><span class="settings-row-value ${serverVertexClass}">${serverVertexText}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Server Claude key</span><span class="settings-row-value ${serverClaudeClass}">${serverClaudeText}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Saved personal Vertex key</span><span class="settings-row-value ${personalKeyClass}">${personalKeyText}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Vertex model</span><span class="settings-row-value">${chatConfig.serverModel || 'gemini-2.5-flash'}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Claude model</span><span class="settings-row-value">${chatConfig.claudeModel || 'claude-sonnet-4-6'}</span></div>
         <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-top:14px">
           <div>
             <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Your Vertex AI API Key</div>
@@ -1866,7 +1896,7 @@ function hasUserVertexKey() {
   return !!getUserVertexKey();
 }
 function isChatAvailable() {
-  return !!chatConfig.serverVertex || hasUserVertexKey();
+  return !!chatConfig.serverVertex || !!chatConfig.serverClaude || hasUserVertexKey();
 }
 function updateChatBadge() {
   const badge = document.getElementById('ai-badge');
@@ -1874,6 +1904,9 @@ function updateChatBadge() {
   if (currentChatMode === 'byok') {
     badge.textContent = 'YOUR KEY';
     badge.style.cssText = 'color:#34d399;border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.08)';
+  } else if (currentChatMode === 'claude') {
+    badge.textContent = 'CLAUDE';
+    badge.style.cssText = 'color:#a78bfa;border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.08)';
   } else {
     badge.textContent = 'VERTEX';
     badge.style.cssText = '';
@@ -1886,15 +1919,18 @@ function updateChatAvailabilityUI() {
   const available = isChatAvailable();
   input.disabled = !available;
   btn.disabled = !available;
-  input.placeholder = available ? 'Ask about your health data...' : 'Add a Vertex AI key in Settings to enable AI chat...';
+  input.placeholder = available ? 'Ask about your health data...' : 'Configure an AI provider in Settings to enable chat...';
 }
 function syncChatMode() {
   const savedMode = localStorage.getItem(LS_CHAT_MODE) || 'server';
   const canUseServer = !!chatConfig.serverVertex;
+  const canUseClaude = !!chatConfig.serverClaude;
   const canUseByok = hasUserVertexKey();
 
   if (savedMode === 'byok' && canUseByok) currentChatMode = 'byok';
+  else if (savedMode === 'claude' && canUseClaude) currentChatMode = 'claude';
   else if (savedMode === 'server' && canUseServer) currentChatMode = 'server';
+  else if (canUseClaude) currentChatMode = 'claude';
   else if (canUseServer) currentChatMode = 'server';
   else if (canUseByok) currentChatMode = 'byok';
   else currentChatMode = 'server';
@@ -1905,15 +1941,19 @@ function syncChatMode() {
 }
 function refreshAiViews() {
   if (currentPage === 'settings') renderSettings();
-  if (currentPage === 'insights') renderInsights();
+  if (currentPage === 'insights') { updateChatBadge(); renderModelSelector(); }
 }
 function setChatMode(mode) {
   if (mode === 'server' && !chatConfig.serverVertex) {
-    alert('Somada AI is not configured yet. Set VERTEX_API_KEY on the server or add your own Vertex API key below.');
+    alert('Somada AI (Vertex) is not configured yet. Set VERTEX_API_KEY on the server.');
+    return;
+  }
+  if (mode === 'claude' && !chatConfig.serverClaude) {
+    alert('Claude is not configured yet. Set ANTHROPIC_API_KEY on the server.');
     return;
   }
   if (mode === 'byok' && !hasUserVertexKey()) {
-    alert('Save your Vertex AI API key first.');
+    alert('Save your Vertex AI API key in Settings first.');
     return;
   }
   localStorage.setItem(LS_CHAT_MODE, mode);
@@ -2014,7 +2054,7 @@ async function sendMessage() {
   const btn   = document.getElementById('send-btn');
   if (!input || !btn) return;
   if (!isChatAvailable()) {
-    appendMessage('ai', 'Add a Vertex AI key in Settings before using chat.');
+    appendMessage('ai', 'Configure an AI provider in Settings before using chat.');
     return;
   }
   const msg = input.value.trim();
@@ -2032,6 +2072,7 @@ async function sendMessage() {
         history: requestHistory,
         chatMode: currentChatMode,
         vertexApiKey: currentChatMode === 'byok' ? getUserVertexKey() : '',
+        // claude mode uses server-side ANTHROPIC_API_KEY; no key needed from frontend
         events: getLifeEvents()
       })
     });
@@ -2169,7 +2210,7 @@ async function loadAppData() {
     ]);
     const hd = await healthResp.json();
     const config = await configResp.json();
-    chatConfig = config.chat || { serverVertex:false, serverModel:'gemini-2.5-flash', byokSupported:true };
+    chatConfig = config.chat || { serverVertex:false, serverModel:'gemini-2.5-flash', serverClaude:false, claudeModel:'claude-sonnet-4-6', byokSupported:true };
     if (!hd.error) healthData = hd;
     syncChatMode();
   } catch(e) { /* server not running */ }

@@ -9,7 +9,9 @@ from datetime import datetime, timedelta
 
 ROOT = pathlib.Path(__file__).parent.parent
 VERTEX_API_BASE = "https://aiplatform.googleapis.com/v1"
+ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 DEFAULT_VERTEX_MODEL = "gemini-2.5-flash"
+DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6"
 RETIRED_VERTEX_MODEL_UPGRADES = {
     "gemini-2.0-flash": "gemini-2.5-flash",
     "gemini-2.0-flash-001": "gemini-2.5-flash",
@@ -36,6 +38,10 @@ EVENT_WORDS_TO_IGNORE = {"week", "semester"}
 def get_vertex_model():
     configured = os.environ.get("VERTEX_MODEL", DEFAULT_VERTEX_MODEL).strip() or DEFAULT_VERTEX_MODEL
     return RETIRED_VERTEX_MODEL_UPGRADES.get(configured, configured)
+
+
+def get_claude_model():
+    return (os.environ.get("CLAUDE_MODEL") or "").strip() or DEFAULT_CLAUDE_MODEL
 
 
 def fetch_supabase_health_data():
@@ -564,6 +570,54 @@ def chat_with_vertex(message, history, health_data, api_key, model):
     try:
         with urllib.request.urlopen(req) as resp:
             return extract_vertex_text(json.loads(resp.read()))
+    except urllib.error.HTTPError as e:
+        return f"API Error {e.code}: {e.read().decode()}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+def chat_with_claude(message, history, health_data, api_key, model):
+    if not api_key:
+        return "Error: ANTHROPIC_API_KEY not set."
+
+    history = normalize_history(history, message)
+    query_context = "\n".join(
+        [item["content"] for item in history if item.get("role") == "user"][-3:] + [message]
+    )
+    system_prompt = build_system_prompt(health_data, user_message=query_context)
+
+    messages = []
+    for item in history:
+        role = "assistant" if item["role"] == "assistant" else "user"
+        messages.append({"role": role, "content": item["content"]})
+    messages.append({"role": "user", "content": message})
+
+    payload = {
+        "model": model,
+        "max_tokens": 1536,
+        "temperature": 0.2,
+        "system": system_prompt,
+        "messages": messages,
+    }
+
+    req = urllib.request.Request(
+        f"{ANTHROPIC_API_BASE}/messages",
+        data=json.dumps(payload).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read())
+            for block in data.get("content", []):
+                if block.get("type") == "text" and block.get("text"):
+                    return block["text"].strip()
+            return "Claude returned an empty response."
     except urllib.error.HTTPError as e:
         return f"API Error {e.code}: {e.read().decode()}"
     except Exception as e:

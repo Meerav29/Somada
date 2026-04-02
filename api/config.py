@@ -16,6 +16,8 @@ class handler(BaseHTTPRequestHandler):
             "chat": {
                 "serverVertex": bool(os.environ.get("VERTEX_API_KEY")),
                 "serverModel": retired_model_upgrades.get(configured_model, configured_model or "gemini-2.5-flash"),
+                "serverClaude": bool(os.environ.get("ANTHROPIC_API_KEY")),
+                "claudeModel": (os.environ.get("CLAUDE_MODEL") or "").strip() or "claude-sonnet-4-6",
                 "byokSupported": True,
             }
         }

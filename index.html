@@ -1332,7 +1332,10 @@ function renderInsights() {
     <div class="insights-grid">${insightCards}</div>
     <div class="chart-header" style="margin-bottom:12px">
       <span class="chart-title">Ask the data</span>
-      <div id="model-selector" style="display:flex;gap:6px"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="model-selector" style="display:flex;gap:6px"></div>
+        <button onclick="navigate('settings')" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer">AI Settings</button>
+      </div>
     </div>
     <div class="chat-container">
       <div class="chat-top">

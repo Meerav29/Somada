@@ -721,9 +721,11 @@ function getLifeEvents() {
 }
 
 // ── localStorage key constants ────────────────────────────
-const LS_VERTEX_KEY  = 'userVertexApiKey';
-const LS_CHAT_MODE   = 'chatMode';
-const LS_BYOK_BANNER = 'byokBannerDismissed';
+const LS_BYOK_KEY      = 'userByokApiKey';
+const LS_BYOK_PROVIDER = 'userByokProvider';  // 'vertex' | 'claude'
+const LS_VERTEX_KEY    = 'userVertexApiKey';   // legacy key name, still read for migration
+const LS_CHAT_MODE     = 'chatMode';
+const LS_BYOK_BANNER   = 'byokBannerDismissed';
 const DATA_RETENTION_MONTHS = 18;
 
 // ── State ─────────────────────────────────────────────────
@@ -1371,20 +1373,19 @@ function renderInsights() {
 function renderModelSelector() {
   const el = document.getElementById('model-selector');
   if (!el) return;
-  const canVertex = !!chatConfig.serverVertex;
-  const canClaude = !!chatConfig.serverClaude;
-  const canByok   = hasUserVertexKey();
+  const canByok = hasUserByokKey();
   const btnStyle = (active, enabled) => {
     const base = 'border-radius:7px;padding:5px 12px;font-size:11px;font-family:\'Inter\',sans-serif;cursor:pointer;font-weight:500;transition:all 0.15s';
     if (!enabled) return `${base};background:transparent;color:var(--muted);border:1px solid var(--border);opacity:0.4;cursor:not-allowed`;
     if (active)   return `${base};background:var(--accent);color:#fff;border:1px solid var(--accent)`;
     return `${base};background:transparent;color:var(--muted);border:1px solid var(--border)`;
   };
-  const byokTitle = canByok ? 'BYOK' : 'BYOK — save a Vertex key in Settings';
+  const byokLabel = canByok ? `BYOK (${getUserByokProvider()})` : 'BYOK';
+  const byokTitle = canByok ? `Using your own ${getUserByokProvider()} key` : 'Save your own API key in Settings to enable BYOK';
   el.innerHTML = `
-    <button style="${btnStyle(currentChatMode==='server', canVertex)}" ${canVertex?`onclick="setChatMode('server')"`:''} title="Somada Vertex AI">Vertex</button>
-    <button style="${btnStyle(currentChatMode==='claude', canClaude)}" ${canClaude?`onclick="setChatMode('claude')"`:''} title="Somada Claude AI">Claude</button>
-    <button style="${btnStyle(currentChatMode==='byok', canByok)}"   ${canByok?`onclick="setChatMode('byok')"`:''} title="${byokTitle}">BYOK</button>
+    <button style="${btnStyle(currentChatMode==='server', true)}" onclick="setChatMode('server')" title="Somada Vertex AI">Vertex</button>
+    <button style="${btnStyle(currentChatMode==='claude', true)}" onclick="setChatMode('claude')" title="Somada Claude AI">Claude</button>
+    <button style="${btnStyle(currentChatMode==='byok', canByok)}" ${canByok?`onclick="setChatMode('byok')"`:''} title="${byokTitle}">${byokLabel}</button>
   `;
 }
 
@@ -1410,7 +1411,9 @@ function renderSettings() {
 
   // For demo users show a note instead of stats that belong to someone else
   const demoNote = isDemo ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:6px;font-size:11px;color:#fbbf24;line-height:1.5">You're viewing sample data. Upload your own Apple Health export below to see your real stats.</div>` : '';
-  const activeModeText = currentChatMode === 'byok' ? 'Your Vertex key' : currentChatMode === 'claude' ? 'Claude' : 'Somada AI (Vertex)';
+  const byokKey = getUserByokKey();
+  const byokProvider = getUserByokProvider();
+  const activeModeText = currentChatMode === 'byok' ? `Your key (${byokProvider})` : currentChatMode === 'claude' ? 'Claude' : 'Vertex';
   const activeModeClass = currentChatMode === 'byok' ? 'warn' : (chatReady ? 'good' : 'warn');
   const chatStatusText = chatReady ? 'Ready' : 'Needs an AI API key';
   const chatStatusClass = chatReady ? 'good' : 'bad';
@@ -1418,15 +1421,15 @@ function renderSettings() {
   const serverVertexClass = chatConfig.serverVertex ? 'good' : 'bad';
   const serverClaudeText = chatConfig.serverClaude ? 'Configured' : 'Not configured';
   const serverClaudeClass = chatConfig.serverClaude ? 'good' : 'bad';
-  const personalKeyText = hasUserVertexKey ? 'Saved in this browser' : 'Not saved';
-  const personalKeyClass = hasUserVertexKey ? 'good' : 'bad';
+  const personalKeyText = byokKey ? `Saved (${byokProvider})` : 'Not saved';
+  const personalKeyClass = byokKey ? 'good' : 'bad';
   const serverChoiceClass = currentChatMode === 'server' ? ' active' : '';
   const claudeChoiceClass = currentChatMode === 'claude' ? ' active' : '';
   const byokChoiceClass = currentChatMode === 'byok' ? ' active' : '';
-  const keyPlaceholder = hasUserVertexKey ? 'Saved key already available in this browser' : 'Paste your Vertex AI API key';
+  const keyPlaceholder = byokKey ? 'Key already saved — paste a new one to replace' : 'Paste your API key here';
   const aiNote = (chatConfig.serverVertex || chatConfig.serverClaude)
-    ? 'Choose between Somada\'s server-side Vertex or Claude key, or use your own Vertex key from this browser.'
-    : 'No server-side AI keys are configured yet. Add your own Vertex AI API key below to enable chat.';
+    ? 'Vertex and Claude use Somada\'s server-side keys and are free for you to use. BYOK lets you use your own API key quota.'
+    : 'No server-side AI keys are configured yet. Add your own API key below to enable chat.';
 
   document.getElementById('page-content').innerHTML = `
     <div class="page-header">
@@ -1462,32 +1465,39 @@ function renderSettings() {
         </div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Choose Somada's server-side Vertex or Claude key, or use your own Vertex AI key from this browser.</p>
         <div class="settings-choice-grid" style="grid-template-columns:repeat(3,1fr)">
-          <button class="settings-choice${serverChoiceClass}" onclick="setChatMode('server')" ${!chatConfig.serverVertex ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+          <button class="settings-choice${serverChoiceClass}" onclick="setChatMode('server')">
             <div class="settings-choice-title">Vertex</div>
-            <div class="settings-row-label">Server-side <code style="font-family:'Inter',sans-serif;font-size:10px">VERTEX_API_KEY</code>. ${serverVertexText}.</div>
+            <div class="settings-row-label">Somada's server key. ${serverVertexText}.</div>
           </button>
-          <button class="settings-choice${claudeChoiceClass}" onclick="setChatMode('claude')" ${!chatConfig.serverClaude ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+          <button class="settings-choice${claudeChoiceClass}" onclick="setChatMode('claude')">
             <div class="settings-choice-title">Claude</div>
-            <div class="settings-row-label">Server-side <code style="font-family:'Inter',sans-serif;font-size:10px">ANTHROPIC_API_KEY</code>. ${serverClaudeText}.</div>
+            <div class="settings-row-label">Somada's server key. ${serverClaudeText}.</div>
           </button>
-          <button class="settings-choice${byokChoiceClass}" onclick="setChatMode('byok')" ${!hasUserVertexKey ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+          <button class="settings-choice${byokChoiceClass}" onclick="setChatMode('byok')" ${!byokKey ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
             <div class="settings-choice-title">BYOK</div>
-            <div class="settings-row-label">Your own Vertex AI key from this browser. ${personalKeyText}.</div>
+            <div class="settings-row-label">Your own API key. ${personalKeyText}.</div>
           </button>
         </div>
         <div class="settings-row"><span class="settings-row-label">Active mode</span><span class="settings-row-value ${activeModeClass}">${activeModeText}</span></div>
         <div class="settings-row"><span class="settings-row-label">Server Vertex key</span><span class="settings-row-value ${serverVertexClass}">${serverVertexText}</span></div>
         <div class="settings-row"><span class="settings-row-label">Server Claude key</span><span class="settings-row-value ${serverClaudeClass}">${serverClaudeText}</span></div>
-        <div class="settings-row"><span class="settings-row-label">Saved personal Vertex key</span><span class="settings-row-value ${personalKeyClass}">${personalKeyText}</span></div>
+        <div class="settings-row"><span class="settings-row-label">Your saved key</span><span class="settings-row-value ${personalKeyClass}">${personalKeyText}</span></div>
         <div class="settings-row"><span class="settings-row-label">Vertex model</span><span class="settings-row-value">${chatConfig.serverModel || 'gemini-2.5-flash'}</span></div>
         <div class="settings-row"><span class="settings-row-label">Claude model</span><span class="settings-row-value">${chatConfig.claudeModel || 'claude-sonnet-4-6'}</span></div>
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-top:14px">
+        <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-top:14px">
           <div>
-            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Your Vertex AI API Key</div>
-            <input id="vertex-api-key-input" type="password" placeholder="${keyPlaceholder}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;box-sizing:border-box;outline:none">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Provider</div>
+            <select id="byok-provider-select" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;outline:none;cursor:pointer">
+              <option value="vertex" ${byokProvider==='vertex'?'selected':''}>Vertex AI</option>
+              <option value="claude" ${byokProvider==='claude'?'selected':''}>Claude</option>
+            </select>
           </div>
-          <button onclick="saveVertexApiKey()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer;font-weight:600">Save Key</button>
-          <button onclick="clearVertexApiKey()" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer">Clear</button>
+          <div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Your API Key</div>
+            <input id="byok-api-key-input" type="password" placeholder="${keyPlaceholder}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;box-sizing:border-box;outline:none">
+          </div>
+          <button onclick="saveByokApiKey()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer;font-weight:600">Save Key</button>
+          <button onclick="clearByokApiKey()" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer">Clear</button>
         </div>
         <div class="settings-note">${aiNote}</div>
       </div>
@@ -1870,16 +1880,16 @@ async function handleFileUpload(input) {
 
 // ── BYOK Banner ───────────────────────────────────────────
 function byokBannerHTML() {
-  const hasServer = !!chatConfig.serverVertex;
-  const hasPersonalKey = hasUserVertexKey();
+  const hasServer = !!chatConfig.serverVertex || !!chatConfig.serverClaude;
+  const hasPersonalKey = hasUserByokKey();
   const dismissed = !!localStorage.getItem(LS_BYOK_BANNER);
   if (hasServer || hasPersonalKey || dismissed) return '';
   return `
     <div class="byok-banner" id="byok-banner">
       <div class="byok-banner-icon">✦</div>
       <div class="byok-banner-text">
-        <strong>AI chat needs a Vertex AI key</strong>
-        <span>Add your own Vertex AI API key in Settings, or configure <code style="font-family:'Inter',sans-serif;font-size:11px">VERTEX_API_KEY</code> on the server.</span>
+        <strong>AI chat needs an API key</strong>
+        <span>Add your own Vertex or Claude API key in Settings, or ask the admin to configure a server-side key.</span>
       </div>
       <button class="byok-banner-cta" onclick="navigate('settings')">Add API Key →</button>
       <button class="byok-banner-dismiss" onclick="dismissByokBanner()" title="Dismiss">✕</button>
@@ -1892,14 +1902,21 @@ function dismissByokBanner() {
 }
 
 // ── AI Chat Settings / State ──────────────────────────────
-function getUserVertexKey() {
-  return (localStorage.getItem(LS_VERTEX_KEY) || '').trim();
+function getUserByokKey() {
+  // Read from new key, fall back to legacy key for existing users
+  return (localStorage.getItem(LS_BYOK_KEY) || localStorage.getItem(LS_VERTEX_KEY) || '').trim();
 }
-function hasUserVertexKey() {
-  return !!getUserVertexKey();
+function getUserByokProvider() {
+  return localStorage.getItem(LS_BYOK_PROVIDER) || 'vertex';
 }
+function hasUserByokKey() {
+  return !!getUserByokKey();
+}
+// Legacy alias used in a few places
+function getUserVertexKey() { return getUserByokKey(); }
+function hasUserVertexKey() { return hasUserByokKey(); }
 function isChatAvailable() {
-  return !!chatConfig.serverVertex || !!chatConfig.serverClaude || hasUserVertexKey();
+  return !!chatConfig.serverVertex || !!chatConfig.serverClaude || hasUserByokKey();
 }
 function updateChatBadge() {
   const badge = document.getElementById('ai-badge');
@@ -1928,7 +1945,7 @@ function syncChatMode() {
   const savedMode = localStorage.getItem(LS_CHAT_MODE) || 'server';
   const canUseServer = !!chatConfig.serverVertex;
   const canUseClaude = !!chatConfig.serverClaude;
-  const canUseByok = hasUserVertexKey();
+  const canUseByok   = hasUserByokKey();
 
   if (savedMode === 'byok' && canUseByok) currentChatMode = 'byok';
   else if (savedMode === 'claude' && canUseClaude) currentChatMode = 'claude';
@@ -1947,37 +1964,35 @@ function refreshAiViews() {
   if (currentPage === 'insights') { updateChatBadge(); renderModelSelector(); }
 }
 function setChatMode(mode) {
-  if (mode === 'server' && !chatConfig.serverVertex) {
-    alert('Somada AI (Vertex) is not configured yet. Set VERTEX_API_KEY on the server.');
-    return;
-  }
-  if (mode === 'claude' && !chatConfig.serverClaude) {
-    alert('Claude is not configured yet. Set ANTHROPIC_API_KEY on the server.');
-    return;
-  }
-  if (mode === 'byok' && !hasUserVertexKey()) {
-    alert('Save your Vertex AI API key in Settings first.');
+  if (mode === 'byok' && !hasUserByokKey()) {
+    alert('Save your API key in Settings first.');
     return;
   }
   localStorage.setItem(LS_CHAT_MODE, mode);
   syncChatMode();
   refreshAiViews();
 }
-function saveVertexApiKey() {
-  const input = document.getElementById('vertex-api-key-input');
+function saveByokApiKey() {
+  const input = document.getElementById('byok-api-key-input');
+  const providerEl = document.getElementById('byok-provider-select');
   const value = input ? input.value.trim() : '';
+  const provider = providerEl ? providerEl.value : 'vertex';
   if (!value) {
-    alert('Paste your Vertex AI API key first.');
+    alert('Paste your API key first.');
     return;
   }
-  localStorage.setItem(LS_VERTEX_KEY, value);
+  localStorage.setItem(LS_BYOK_KEY, value);
+  localStorage.setItem(LS_BYOK_PROVIDER, provider);
+  localStorage.removeItem(LS_VERTEX_KEY); // clear legacy
   localStorage.removeItem(LS_BYOK_BANNER);
   localStorage.setItem(LS_CHAT_MODE, 'byok');
   syncChatMode();
   refreshAiViews();
 }
-function clearVertexApiKey() {
-  localStorage.removeItem(LS_VERTEX_KEY);
+function clearByokApiKey() {
+  localStorage.removeItem(LS_BYOK_KEY);
+  localStorage.removeItem(LS_VERTEX_KEY); // clear legacy too
+  localStorage.removeItem(LS_BYOK_PROVIDER);
   if (localStorage.getItem(LS_CHAT_MODE) === 'byok') {
     localStorage.setItem(LS_CHAT_MODE, 'server');
   }
@@ -2073,9 +2088,10 @@ async function sendMessage() {
       body: JSON.stringify({
         message: msg,
         history: requestHistory,
-        chatMode: currentChatMode,
-        vertexApiKey: currentChatMode === 'byok' ? getUserVertexKey() : '',
-        // claude mode uses server-side ANTHROPIC_API_KEY; no key needed from frontend
+        chatMode: currentChatMode === 'byok'
+          ? (getUserByokProvider() === 'claude' ? 'byok-claude' : 'byok')
+          : currentChatMode,
+        vertexApiKey: currentChatMode === 'byok' ? getUserByokKey() : '',
         events: getLifeEvents()
       })
     });

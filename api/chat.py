@@ -14,6 +14,8 @@ from api.chat_core import (
 def resolve_provider(body):
     """Return (api_key, mode, provider) for the incoming request."""
     mode = body.get("chatMode", "server")
+    if mode == "byok-claude":
+        return (body.get("vertexApiKey") or "").strip(), "byok-claude", "claude"
     if mode == "byok":
         return (body.get("vertexApiKey") or "").strip(), "byok", "vertex"
     if mode == "claude":
@@ -40,8 +42,8 @@ class handler(BaseHTTPRequestHandler):
             health_data = dict(health_data)
             health_data["events"] = events
 
-        if mode == "byok" and not api_key:
-            reply = "Add your Vertex AI API key in Settings before using your own key."
+        if mode in ("byok", "byok-claude") and not api_key:
+            reply = "Add your API key in Settings before using BYOK mode."
             model = get_vertex_model()
         elif provider == "claude":
             model = get_claude_model()

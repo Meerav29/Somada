@@ -420,6 +420,18 @@ body {
 .message.ai .bubble li { margin-bottom:5px; }
 .message.ai .bubble strong { font-weight:700; color:var(--text); }
 .message.ai .bubble em { font-style:italic; color:var(--muted); }
+/* AI structured response */
+:root { --color-normal:#22c55e; --color-low:#f59e0b; --color-critical:#ef4444; }
+.ai-summary { margin:0 0 10px; font-size:13px; line-height:1.65; }
+.ai-chart { margin:8px 0 12px; display:flex; flex-direction:column; gap:4px; }
+.ai-bar-row { display:flex; align-items:center; gap:6px; font-size:11px; }
+.ai-bar-label { width:44px; flex-shrink:0; color:var(--muted); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ai-bar-track { flex:1; height:7px; border-radius:4px; background:var(--surface); overflow:hidden; }
+.ai-bar-fill { height:100%; border-radius:4px; transition:width 0.4s ease; }
+.ai-bar-value { width:54px; flex-shrink:0; color:var(--text); font-size:11px; white-space:nowrap; }
+.ai-bar-unit { color:var(--muted); }
+.ai-insight { margin:0 0 8px; font-size:13px; line-height:1.65; color:var(--text); }
+.ai-takeaway { margin:0; font-size:12px; line-height:1.55; color:var(--muted); font-style:italic; }
 .typing { display:flex; gap:4px; padding:2px 0; align-items:center; }
 .typing span { width:5px; height:5px; border-radius:50%; background:var(--muted); animation:bounce 1.2s infinite; }
 .typing span:nth-child(2){animation-delay:0.2s} .typing span:nth-child(3){animation-delay:0.4s}
@@ -2008,41 +2020,36 @@ function sendSuggestion(el) {
 function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
 function autoResize(el) { el.style.height='40px'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 
-function renderMarkdown(md) {
-  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function inline(s) {
-    return esc(s)
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+function renderAIResponse(content) {
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let parsed;
+  try { parsed = JSON.parse(content); } catch(e) { parsed = null; }
+  if (!parsed || typeof parsed !== 'object') {
+    return `<p>${esc(content)}</p>`;
   }
-  const lines = md.split('\n');
-  let html = '', inList = null, para = [];
-  function flushPara() { if (para.length) { html += `<p>${para.join('<br>')}</p>`; para = []; } }
-  function flushList() { if (inList) { html += `</${inList}>`; inList = null; } }
-  for (const line of lines) {
-    const ol = line.match(/^(\d+)\.\s+(.*)/);
-    const ul = line.match(/^[-*]\s+(.*)/);
-    if (ol) {
-      flushPara();
-      if (inList !== 'ol') { flushList(); html += '<ol>'; inList = 'ol'; }
-      html += `<li>${inline(ol[2])}</li>`;
-    } else if (ul) {
-      flushPara();
-      if (inList !== 'ul') { flushList(); html += '<ul>'; inList = 'ul'; }
-      html += `<li>${inline(ul[1])}</li>`;
-    } else if (line.trim() === '') {
-      flushList(); flushPara();
-    } else {
-      flushList(); para.push(inline(line));
-    }
+  const { summary = '', data_points = [], insight = '', takeaway = '' } = parsed;
+  let html = '';
+  if (summary) html += `<p class="ai-summary">${esc(summary)}</p>`;
+  if (Array.isArray(data_points) && data_points.length > 0) {
+    const maxVal = Math.max(...data_points.map(d => Math.abs(d.value || 0))) || 1;
+    const flagColor = { normal: 'var(--color-normal)', low: 'var(--color-low)', critical: 'var(--color-critical)' };
+    const bars = data_points.map(d => {
+      const pct = Math.round((Math.abs(d.value || 0) / maxVal) * 100);
+      const color = flagColor[d.flag] || flagColor.normal;
+      const valStr = esc(String(d.value));
+      const unitHtml = d.unit ? ` <span class="ai-bar-unit">${esc(d.unit)}</span>` : '';
+      return `<div class="ai-bar-row"><span class="ai-bar-label">${esc(d.date)}</span><div class="ai-bar-track"><div class="ai-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="ai-bar-value">${valStr}${unitHtml}</span></div>`;
+    }).join('');
+    html += `<div class="ai-chart">${bars}</div>`;
   }
-  flushList(); flushPara();
+  if (insight) html += `<p class="ai-insight">${esc(insight)}</p>`;
+  if (takeaway) html += `<p class="ai-takeaway">${esc(takeaway)}</p>`;
   return html;
 }
 function appendMessageEl(container, role, content) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
-  const body = role === 'ai' ? renderMarkdown(content) : content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  const body = role === 'ai' ? renderAIResponse(content) : content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   div.innerHTML = `<div class="avatar ${role==='ai'?'ai':'user-av'}">${role==='ai'?'AI':'M'}</div><div class="bubble">${body}</div>`;
   container.appendChild(div);
   return div;

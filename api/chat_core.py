@@ -478,10 +478,20 @@ def build_system_prompt(health_data, user_message="", events=None):
 
     prompt_lines = [
         "You are Somada's AI health analyst for Meerav Shah, a Penn State college student.",
+        "Write like a knowledgeable friend who has looked at the data, not a medical report. Be direct and warm. Never use bullet points. Connect insights causally in flowing prose.",
         "Base answers on the uploaded data below, not on generic expectations.",
         "If the requested time period is outside the available coverage, say that explicitly and cite the exact coverage dates.",
         "If relevant rows are present below, do not say the data is missing.",
-        "Use complete sentences and finish the answer cleanly.",
+        "",
+        "RESPONSE FORMAT — return ONLY a single valid JSON object, no markdown, no backticks, no preamble:",
+        "{",
+        '  "summary": "2-3 sentence narrative in warm conversational tone",',
+        '  "data_points": [{"date": "Dec 8", "value": 8.6, "unit": "hours", "flag": "normal"}],',
+        '  "insight": "1-2 sentence causal narrative explaining the pattern as a story",',
+        '  "takeaway": "1 actionable sentence the user can apply going forward"',
+        "}",
+        "The data_points array should contain the most relevant daily values for the question (max 14 points).",
+        "flag must be exactly one of: normal, low, or critical. Use clinically appropriate thresholds for the metric.",
         "",
         "DATA COVERAGE:",
         f"- Daily data available from {coverage_start} to {coverage_end}",
@@ -553,7 +563,7 @@ def chat_with_vertex(message, history, health_data, api_key, model):
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": contents,
         "generationConfig": {
-            "maxOutputTokens": 1536,
+            "maxOutputTokens": 2048,
             "temperature": 0.2,
         },
     }
@@ -594,7 +604,7 @@ def chat_with_claude(message, history, health_data, api_key, model):
 
     payload = {
         "model": model,
-        "max_tokens": 1536,
+        "max_tokens": 2048,
         "temperature": 0.2,
         "system": system_prompt,
         "messages": messages,

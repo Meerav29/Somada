@@ -1916,7 +1916,7 @@ function hasUserByokKey() {
 function getUserVertexKey() { return getUserByokKey(); }
 function hasUserVertexKey() { return hasUserByokKey(); }
 function isChatAvailable() {
-  return !!chatConfig.serverVertex || !!chatConfig.serverClaude || hasUserByokKey();
+  return true; // Vertex and Claude always available; BYOK also available if key saved
 }
 function updateChatBadge() {
   const badge = document.getElementById('ai-badge');
@@ -1943,17 +1943,14 @@ function updateChatAvailabilityUI() {
 }
 function syncChatMode() {
   const savedMode = localStorage.getItem(LS_CHAT_MODE) || 'server';
-  const canUseServer = !!chatConfig.serverVertex;
-  const canUseClaude = !!chatConfig.serverClaude;
-  const canUseByok   = hasUserByokKey();
+  const canUseByok = hasUserByokKey();
 
+  // Vertex and Claude are always available (server-side keys, free to use)
+  // Only BYOK requires a saved key
   if (savedMode === 'byok' && canUseByok) currentChatMode = 'byok';
-  else if (savedMode === 'claude' && canUseClaude) currentChatMode = 'claude';
-  else if (savedMode === 'server' && canUseServer) currentChatMode = 'server';
-  else if (canUseClaude) currentChatMode = 'claude';
-  else if (canUseServer) currentChatMode = 'server';
-  else if (canUseByok) currentChatMode = 'byok';
-  else currentChatMode = 'server';
+  else if (savedMode === 'claude') currentChatMode = 'claude';
+  else if (savedMode === 'server') currentChatMode = 'server';
+  else currentChatMode = 'claude'; // default to claude if saved mode is invalid
 
   localStorage.setItem(LS_CHAT_MODE, currentChatMode);
   updateChatBadge();

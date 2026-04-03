@@ -2022,8 +2022,10 @@ function autoResize(el) { el.style.height='40px'; el.style.height=Math.min(el.sc
 
 function renderAIResponse(content) {
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Strip markdown code fences the model sometimes adds despite instructions
+  const stripped = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
   let parsed;
-  try { parsed = JSON.parse(content); } catch(e) { parsed = null; }
+  try { parsed = JSON.parse(stripped); } catch(e) { parsed = null; }
   if (!parsed || typeof parsed !== 'object') {
     return `<p>${esc(content)}</p>`;
   }
@@ -2081,7 +2083,17 @@ async function sendMessage() {
   }
   const msg = input.value.trim();
   if (!msg) return;
-  const requestHistory = chatHistory.slice(-10);
+  // Compress assistant JSON blobs to just their summary text so the model
+  // doesn't see raw JSON in history and try to mirror/deviate from it.
+  const requestHistory = chatHistory.slice(-10).map(m => {
+    if (m.role !== 'assistant') return m;
+    const s = m.content.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'').trim();
+    try {
+      const p = JSON.parse(s);
+      if (p && p.summary) return { role:'assistant', content: p.summary };
+    } catch(e) {}
+    return m;
+  });
   input.value=''; input.style.height='40px'; btn.disabled=true;
   appendMessage('user', msg);
   showTyping();

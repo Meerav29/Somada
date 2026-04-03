@@ -1,6 +1,6 @@
 # Somada - Agent Context
 
-Somada is a personal Apple Health dashboard. It visualizes steps, sleep, HRV, heart rate, and related trends, and it includes an AI chat experience backed by Vertex AI.
+Somada is a personal Apple Health dashboard. It visualizes steps, sleep, HRV, heart rate, and related trends, and it includes an AI chat experience backed by Vertex AI and Claude.
 
 The deployed app runs on Vercel and uses Supabase for auth plus stored health data. The local development path uses `server.py` and `health_data.json`.
 
@@ -18,6 +18,7 @@ health-dashboard/
 `- api/
    |- health.py            # GET /api/health
    |- chat.py              # POST /api/chat
+   |- chat_core.py         # Shared logic: Vertex + Claude callers, prompt builder, data helpers
    |- config.py            # GET /api/config
    `- supabase_config.py   # GET /api/supabase_config
 ```
@@ -46,10 +47,12 @@ health-dashboard/
 |---|---|---|
 | `SUPABASE_URL` | `api/health.py`, `api/chat.py`, `api/supabase_config.py` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | same as above | Supabase anon public key |
-| `VERTEX_API_KEY` | `api/chat.py`, `server.py` | Shared server-side Vertex AI key |
-| `VERTEX_MODEL` | `api/chat.py`, `server.py` | Optional model override, defaults to `gemini-2.5-flash` |
+| `VERTEX_API_KEY` | `api/chat.py`, `api/chat_core.py` | Shared server-side Vertex AI key |
+| `VERTEX_MODEL` | `api/chat.py`, `api/chat_core.py` | Optional model override, defaults to `gemini-2.5-flash` |
+| `ANTHROPIC_API_KEY` | `api/chat.py`, `api/chat_core.py` | Shared server-side Claude key |
+| `CLAUDE_MODEL` | `api/chat.py`, `api/chat_core.py` | Optional model override, defaults to `claude-sonnet-4-6` |
 
-Users can also save their own Vertex AI API key in the browser from Settings. The frontend stores it in localStorage and includes it with chat requests when the user selects the BYOK mode.
+Users can also save their own API key (Vertex or Claude) in the browser from Settings. The frontend stores it in localStorage under `userByokApiKey` + `userByokProvider` and includes it with chat requests when the user selects BYOK mode.
 
 ---
 
@@ -142,10 +145,17 @@ Body:
 }
 ```
 
-- Builds a system prompt from the health data.
-- Sends the request to Vertex AI.
-- Uses `VERTEX_API_KEY` when `chatMode` is `server`.
-- Uses the supplied `vertexApiKey` when `chatMode` is `byok`.
+`chatMode` values:
+
+| Value | Behaviour |
+|---|---|
+| `server` | Uses server-side `VERTEX_API_KEY` → Vertex AI |
+| `claude` | Uses server-side `ANTHROPIC_API_KEY` → Claude |
+| `byok` | Uses `vertexApiKey` from request body → Vertex AI (user's own key) |
+| `byok-claude` | Uses `vertexApiKey` from request body → Claude (user's own key) |
+
+- Builds a system prompt from the health data via `chat_core.build_system_prompt()`.
+- Routes to `chat_with_vertex()` or `chat_with_claude()` in `api/chat_core.py`.
 
 ### `GET /api/config`
 
@@ -156,6 +166,8 @@ Returns the current chat configuration:
   "chat": {
     "serverVertex": true,
     "serverModel": "gemini-2.5-flash",
+    "serverClaude": true,
+    "claudeModel": "claude-sonnet-4-6",
     "byokSupported": true
   }
 }
@@ -170,10 +182,12 @@ Returns `{ url, anonKey }` for frontend initialization.
 ## Frontend Notes
 
 - `index.html` is the whole app.
-- `chatConfig` tracks whether the shared server-side Vertex key is available and which model is configured.
-- `currentChatMode` is either `server` or `byok`.
-- The Settings page is where users choose between Somada AI and their own Vertex key.
-- The Insights page no longer exposes provider switching.
+- `chatConfig` tracks which server-side providers are configured and which models they use.
+- `currentChatMode` is `server`, `claude`, or `byok`.
+- The Insights page has a **Vertex / Claude / BYOK** 3-button model selector. Vertex and Claude are always clickable (server keys, free for users). BYOK is greyed out until the user saves a key.
+- The Settings page is where users manage their BYOK key. A provider dropdown lets them choose Vertex AI or Claude for their own key.
+- BYOK localStorage keys: `userByokApiKey` (the key), `userByokProvider` (`vertex` or `claude`). The legacy key `userVertexApiKey` is still read for migration but new saves go to `userByokApiKey`.
+- `syncChatMode()` no longer gates Vertex/Claude on server key availability — both are always selectable. Only BYOK requires a saved key.
 
 ---
 
@@ -183,3 +197,5 @@ Returns `{ url, anonKey }` for frontend initialization.
 - `LIFE_EVENTS` is duplicated between `parse_health.py` and `index.html`. Keep them in sync.
 - Upload parsing is browser-side. Do not add large server-side upload flows for Vercel.
 - If you change how health data is fetched, update both `api/health.py` and the local-dev path in `server.py` if needed.
+- `api/chat_core.py` is shared by both `api/chat.py` and local `server.py`. Changes there affect both paths.
+- Do not gate Vertex/Claude mode selection on `chatConfig.serverVertex`/`serverClaude` — those flags are informational only. `syncChatMode()` intentionally allows selecting either server mode regardless of the flag value.

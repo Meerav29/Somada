@@ -8,7 +8,7 @@ A personal health analytics dashboard powered by Apple Health data plus Vertex A
 
 ### Try it — hosted on Vercel
 
-Want to explore without setting anything up? Use the hosted version at [somada.app](https://somada.app).
+Want to explore without setting anything up? Use the hosted version at [somada.app](https://somada.vercel.app).
 
 - Sign up with email, upload your `export.xml`, and your data is parsed entirely in the browser before being saved to your account in Supabase.
 - AI chat (Gemini and Claude) is available out of the box — no API key needed.

@@ -1,20 +1,28 @@
 # Somada
 
-A personal health analytics dashboard powered by Apple Health data plus Vertex AI chat. It visualizes sleep, steps, heart rate, and HRV with life events annotated on charts.
+A personal health analytics dashboard powered by Apple Health data plus Vertex AI and Claude chat. It visualizes sleep, steps, heart rate, and HRV with life events annotated on charts.
 
 ---
 
-## Deployed (Vercel)
+## Two ways to use it
 
-This is the primary setup. Data lives in Supabase and the app is hosted on Vercel. Uploading your health data happens entirely in the browser.
+### Try it — hosted on Vercel
 
-### Prerequisites
+Want to explore without setting anything up? Use the hosted version at [somada.app](https://somada.app).
 
-- [Vercel](https://vercel.com)
-- [Supabase](https://supabase.com)
-- A Vertex AI API key from Google Cloud
+- Sign up with email, upload your `export.xml`, and your data is parsed entirely in the browser before being saved to your account in Supabase.
+- AI chat (Gemini and Claude) is available out of the box — no API key needed.
+- You can also bring your own Vertex AI or Anthropic key in Settings if you prefer to route chat through your own account.
 
-### 1. Create the Supabase table
+**Data note:** your health data is stored in a shared Supabase instance. If you want your data to never leave your own infrastructure, use the self-hosted path below.
+
+---
+
+### Self-host — full privacy and control
+
+The repo is open source. Fork or clone it and run everything yourself. Your data stays on your own Supabase project and your own Vercel deployment (or any other host).
+
+#### 1. Create the Supabase table
 
 Run this in your Supabase SQL editor:
 
@@ -34,63 +42,67 @@ CREATE POLICY "allow_auth_write" ON health_data
   FOR ALL USING (auth.role() = 'authenticated');
 ```
 
-### 2. Configure Vercel env vars
+#### 2. Deploy to Vercel
 
-Set these in your Vercel project:
+Fork the repo and import it into Vercel. Set these environment variables in your Vercel project:
 
 | Variable | Purpose |
 |---|---|
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon public key |
-| `VERTEX_API_KEY` | Server-side Vertex AI key for the shared "Somada AI" mode |
+| `VERTEX_API_KEY` | Server-side Vertex AI key for shared "Somada AI" mode (optional) |
 | `VERTEX_MODEL` | Optional. Defaults to `gemini-2.5-flash` |
+| `ANTHROPIC_API_KEY` | Server-side Claude key for shared Claude mode (optional) |
+| `CLAUDE_MODEL` | Optional. Defaults to `claude-sonnet-4-6` |
 
-`VERTEX_API_KEY` is optional if you only want charts. If you do not set it, users can still use chat by saving their own Vertex AI API key in Settings.
+Both AI keys are optional — if you skip them, users can still chat by saving their own key in Settings (BYOK).
 
-### 3. Create your account
+#### 3. Create your account
 
-Open the deployed app and sign up with Supabase auth.
+Open your deployed app and sign up with Supabase auth.
 
-### 4. Upload Apple Health data
+#### 4. Upload Apple Health data
 
 On your iPhone:
 
-> Health app -> profile picture -> Export All Health Data
+> Health app → profile picture → Export All Health Data
 
-Unzip the export and upload `export.xml` in the app. Parsing runs in the browser and then saves to Supabase.
+Unzip the export and upload `export.xml` in the app. Parsing runs in the browser and then saves to your Supabase.
 
-### 5. Update life events
+#### 5. Update life events
 
-Update `LIFE_EVENTS` in both `parse_health.py` and `index.html`, then re-upload `export.xml`.
+Edit the `LIFE_EVENTS` array in `index.html` (and `parse_health.py` if using local dev), then re-upload `export.xml`.
 
 ---
 
 ## Local development
 
-### 1. Set Vertex AI env vars
+Run the app entirely on your machine — no Supabase or Vercel account needed.
+
+#### 1. Set env vars
 
 Windows Command Prompt:
 
 ```bat
 set VERTEX_API_KEY=your_key_here
-set VERTEX_MODEL=gemini-2.5-flash
+set ANTHROPIC_API_KEY=your_key_here
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:VERTEX_API_KEY="your_key_here"
-$env:VERTEX_MODEL="gemini-2.5-flash"
+$env:ANTHROPIC_API_KEY="your_key_here"
 ```
 
 Or create a `.env` file:
 
 ```dotenv
 VERTEX_API_KEY=your_key_here
-VERTEX_MODEL=gemini-2.5-flash
+ANTHROPIC_API_KEY=your_key_here
 ```
 
-### 2. Parse your health data
+#### 2. Parse your health data
 
 ```bash
 python parse_health.py export.xml
@@ -98,7 +110,7 @@ python parse_health.py export.xml
 
 This creates `health_data.json`.
 
-### 3. Start the dashboard
+#### 3. Start the dashboard
 
 ```bash
 python server.py
@@ -108,18 +120,10 @@ Open `http://localhost:8080`.
 
 ---
 
-## Vertex AI notes
-
-- The app now uses Vertex AI only. Claude and Gemini provider switching has been removed.
-- The shared backend mode uses `VERTEX_API_KEY`.
-- Users can optionally save their own Vertex AI API key in Settings and route chat through that key instead.
-- Google documents two API-key paths for Vertex AI: an express-mode API key, or a standard Google Cloud API key that is bound to a service account. If your key is neither, use ADC instead.
-
----
-
 ## Features
 
 - Dashboard views for steps, sleep, resting HR, and HRV
-- Browser-side Apple Health parsing and upload
-- AI chat over your health data using Vertex AI
+- Browser-side Apple Health XML parsing — data never touches a server during upload
+- AI chat over your health data using Vertex AI (Gemini) or Claude
+- Bring your own API key (Vertex or Anthropic) via Settings
 - Life-event annotations across charts and AI context

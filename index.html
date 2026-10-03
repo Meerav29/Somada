@@ -2295,6 +2295,10 @@ async function loadAppData() {
     const config = await configResp.json();
     chatConfig = config.chat || { serverVertex:false, serverModel:'gemini-2.5-flash', serverClaude:false, claudeModel:'claude-sonnet-4-6', byokSupported:true };
     if (!hd.error) healthData = hd;
+    if (currentUser && !hd.error) {
+      if (hd.is_demo) localStorage.removeItem('hasOwnData_' + currentUser.id);
+      else localStorage.setItem('hasOwnData_' + currentUser.id, '1');
+    }
     syncChatMode();
   } catch(e) { /* server not running */ }
 }

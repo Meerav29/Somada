@@ -2,6 +2,12 @@
   "version": 2,
   "buildCommand": "npm --prefix web ci && npm --prefix web run build && node scripts/build-site.mjs",
   "outputDirectory": "public",
+  "functions": {
+    "api/*.py": { "excludeFiles": "{web/**,public/**,docs/**,tests/**,supabase/**,scripts/**}" }
+  },
+  "redirects": [
+    { "source": "/app", "destination": "/app/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/app/(.*)", "destination": "/app/index.html" },
     { "source": "/((?!api/|app/).*)", "destination": "/index.html" }

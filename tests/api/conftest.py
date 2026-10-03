@@ -17,12 +17,16 @@ def fake_supabase(monkeypatch):
         "rows": {"user-a": {"who": "a"}, "user-b": {"who": "b"}},
         "demo": {"who": "demo"},
         "calls": [],
+        "force_status": {},  # url substring -> (status, body) to simulate failures
     }
 
     def fake_get(url, headers, timeout=3):
         state["calls"].append((url, dict(headers)))
         token = headers.get("Authorization", "").removeprefix("Bearer ")
         uid = state["users"].get(token)
+        for needle, forced in state["force_status"].items():
+            if needle in url:
+                return forced
         if "/auth/v1/user" in url:
             return (200, {"id": uid}) if uid else (401, None)
         if not uid:  # anon / bad token sees nothing under RLS

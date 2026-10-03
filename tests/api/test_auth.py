@@ -88,3 +88,8 @@ def test_verify_token_rejects_network_error(fake_supabase, monkeypatch):
     )
     with pytest.raises(AuthError):
         verify_token("token-a")
+
+
+def test_verify_token_hits_the_auth_user_endpoint(fake_supabase):
+    verify_token("token-a")
+    assert fake_supabase["calls"][0][0] == "https://example.supabase.co/auth/v1/user"

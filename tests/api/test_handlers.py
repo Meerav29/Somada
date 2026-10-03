@@ -24,7 +24,7 @@ def test_health_returns_only_callers_data(fake_supabase, call):
 def test_health_new_user_gets_demo(fake_supabase, call):
     fake_supabase["users"]["token-c"] = "user-c"
     status, body = call(health_module.handler, headers=bearer("token-c"))
-    assert status == 200 and body == {"who": "demo"}
+    assert status == 200 and body == {"who": "demo", "is_demo": True}
 
 
 def test_health_local_dev_needs_no_token(no_supabase, call, monkeypatch):

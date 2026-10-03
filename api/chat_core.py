@@ -56,16 +56,24 @@ def fetch_supabase_health_data(auth):
         return None
 
     headers = {"apikey": anon_key, "Authorization": f"Bearer {auth.token}"}
-    queries = [
-        f"user_id=eq.{urllib.parse.quote(auth.user_id, safe='')}",
-        "is_demo=eq.true",
-    ]
-    for query in queries:
-        status, rows = supabase_http.http_get_json(
-            f"{supabase_url}/rest/v1/health_data?select=data&{query}", headers
-        )
-        if status == 200 and rows:
-            return rows[0].get("data")
+    base = f"{supabase_url}/rest/v1/health_data?select=data"
+
+    status, rows = supabase_http.http_get_json(
+        f"{base}&user_id=eq.{urllib.parse.quote(auth.user_id, safe='')}", headers
+    )
+    if status != 200:
+        # Never mask an outage as the user's data by serving the demo row.
+        return None
+    if rows:
+        return rows[0].get("data")
+
+    # Signed in, query succeeded, no row yet: fall back to the shared demo data.
+    status, rows = supabase_http.http_get_json(f"{base}&is_demo=eq.true", headers)
+    if status == 200 and rows:
+        data = rows[0].get("data")
+        if isinstance(data, dict):
+            return {**data, "is_demo": True}
+        return data
     return None
 
 

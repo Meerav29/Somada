@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 
+from api.auth import AuthError, authenticate
 from api.chat_core import (
     chat_with_claude,
     chat_with_vertex,
@@ -25,10 +26,16 @@ def resolve_provider(body):
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        try:
+            auth = authenticate(self.headers)
+        except AuthError as e:
+            self._send_json({"error": str(e)}, 401)
+            return
+
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length))
 
-        health_data = load_health_data()
+        health_data = load_health_data(auth=auth)
         if not health_data:
             self._send_json({"reply": "No health data available."})
             return
@@ -54,9 +61,9 @@ class handler(BaseHTTPRequestHandler):
 
         self._send_json({"reply": reply, "mode": mode, "model": model})
 
-    def _send_json(self, data):
+    def _send_json(self, data, status=200):
         response = json.dumps(data).encode()
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(response)))
         self.end_headers()

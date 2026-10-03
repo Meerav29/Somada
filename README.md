@@ -14,7 +14,7 @@ Want to explore without setting anything up? Use the hosted version at [somada.a
 - AI chat (Gemini and Claude) is available out of the box — no API key needed.
 - You can also bring your own Vertex AI or Anthropic key in Settings if you prefer to route chat through your own account.
 
-**Data note:** your health data is stored in a shared Supabase instance. If you want your data to never leave your own infrastructure, use the self-hosted path below.
+**Data note:** each account's health data is stored in its own row in a shared Supabase instance, protected by row-level security so only the signed-in owner can read or write it. If you want your data to never leave your own infrastructure, use the self-hosted path below.
 
 ---
 
@@ -24,23 +24,10 @@ The repo is open source. Fork or clone it and run everything yourself. Your data
 
 #### 1. Create the Supabase table
 
-Run this in your Supabase SQL editor:
-
-```sql
-CREATE TABLE health_data (
-  id integer PRIMARY KEY DEFAULT 1,
-  data jsonb NOT NULL,
-  updated_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE health_data ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "allow_public_read" ON health_data
-  FOR SELECT USING (true);
-
-CREATE POLICY "allow_auth_write" ON health_data
-  FOR ALL USING (auth.role() = 'authenticated');
-```
+In your Supabase SQL editor, run the files in `supabase/migrations/` in order
+(`0001_initial_health_data.sql`, then `0002_per_user_health_data.sql`). Each user gets
+their own row protected by row-level security. Optionally run `supabase/seed_demo.sql`
+to add the synthetic demo dataset that new accounts browse before uploading their own data.
 
 #### 2. Deploy to Vercel
 

@@ -7,6 +7,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
 
+import api.supabase_http as supabase_http
+
 ROOT = pathlib.Path(__file__).parent.parent
 VERTEX_API_BASE = "https://aiplatform.googleapis.com/v1"
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
@@ -44,39 +46,41 @@ def get_claude_model():
     return (os.environ.get("CLAUDE_MODEL") or "").strip() or DEFAULT_CLAUDE_MODEL
 
 
-def fetch_supabase_health_data():
-    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
-    supabase_anon_key = os.environ.get("SUPABASE_ANON_KEY", "").strip()
-    if not supabase_url or not supabase_anon_key:
-        return None
-    if "your-supabase" in supabase_url or "your_supabase" in supabase_anon_key.lower():
+def fetch_supabase_health_data(auth):
+    """Return the caller's own health data, else the shared demo data, else None.
+
+    Queries run with the caller's JWT, so row-level security decides what is visible.
+    """
+    supabase_url, anon_key = supabase_http.supabase_env()
+    if not supabase_url or auth is None or not auth.token or not auth.user_id:
         return None
 
-    urls = [
-        f"{supabase_url}/rest/v1/health_data?select=data&id=eq.1",
-        f"{supabase_url}/rest/v1/health_data?select=data&limit=1",
-    ]
-    headers = {
-        "apikey": supabase_anon_key,
-        "Authorization": f"Bearer {supabase_anon_key}",
-    }
+    headers = {"apikey": anon_key, "Authorization": f"Bearer {auth.token}"}
+    base = f"{supabase_url}/rest/v1/health_data?select=data"
 
-    for url in urls:
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                rows = json.loads(resp.read())
-                if rows:
-                    return rows[0].get("data")
-        except Exception:
-            continue
+    status, rows = supabase_http.http_get_json(
+        f"{base}&user_id=eq.{urllib.parse.quote(auth.user_id, safe='')}", headers
+    )
+    if status != 200:
+        # Never mask an outage as the user's data by serving the demo row.
+        return None
+    if rows:
+        return rows[0].get("data")
+
+    # Signed in, query succeeded, no row yet: fall back to the shared demo data.
+    status, rows = supabase_http.http_get_json(f"{base}&is_demo=eq.true", headers)
+    if status == 200 and rows:
+        data = rows[0].get("data")
+        if isinstance(data, dict):
+            return {**data, "is_demo": True}
+        return data
     return None
 
 
-def load_health_data(local_path=None):
-    data = fetch_supabase_health_data()
-    if data is not None:
-        return data
+def load_health_data(local_path=None, auth=None):
+    # When Supabase is configured it is the only source: no anon reads, no local fallback.
+    if supabase_http.supabase_configured():
+        return fetch_supabase_health_data(auth)
 
     health_file = pathlib.Path(local_path) if local_path else ROOT / "health_data.json"
     if not health_file.exists():

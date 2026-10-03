@@ -15,6 +15,7 @@ health-dashboard/
 |- parse_health.py         # Local-only Apple Health XML parser
 |- vercel.json             # SPA rewrites for Vercel
 |- .env                    # Local env vars (gitignored)
+|- supabase/               # migrations/, rollback/, tests/ (rls_check.sql), seed_demo.sql
 `- api/
    |- health.py            # GET /api/health
    |- chat.py              # POST /api/chat
@@ -38,6 +39,7 @@ health-dashboard/
 - `python parse_health.py export.xml` generates `health_data.json`.
 - `python server.py` serves the app at `http://localhost:8080`.
 - `server.py` mirrors the main `/api/*` routes for local testing only.
+- Do not set `SUPABASE_URL`/`SUPABASE_ANON_KEY` when running `server.py` locally; if set, `server.py` has no auth and will return no data.
 
 ---
 
@@ -66,23 +68,7 @@ Users can also save their own API key (Vertex or Claude) in the browser from Set
 
 ### Database
 
-Single table:
-
-```sql
-CREATE TABLE health_data (
-  id integer PRIMARY KEY DEFAULT 1,
-  data jsonb NOT NULL,
-  updated_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE health_data ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "allow_public_read" ON health_data
-  FOR SELECT USING (true);
-
-CREATE POLICY "allow_auth_write" ON health_data
-  FOR ALL USING (auth.role() = 'authenticated');
-```
+Single table `health_data` (see `supabase/migrations/`). One row per user (`user_id`, unique) plus at most one read-only synthetic demo row (`is_demo = true`). RLS: a signed-in user can read/write only their own row and read the demo row; anonymous users get nothing. The API forwards the caller's JWT to PostgREST so RLS enforces this. Upsert from the client with `onConflict: 'user_id'`.
 
 ---
 

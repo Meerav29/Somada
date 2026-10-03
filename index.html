@@ -1698,7 +1698,7 @@ async function doReparse() {
     if (data.ok) {
       el.className = 'status-msg success';
       el.textContent = 'Done! Reloading data...';
-      const hr = await fetch('/api/health');
+      const hr = await fetch('/api/health', { headers: await authHeaders() });
       healthData = await hr.json();
       if (!healthData.error) {
         setTimeout(() => { el.className='status-msg success'; el.textContent='Data updated successfully.'; }, 500);
@@ -1899,7 +1899,7 @@ async function handleFileUpload(input) {
     // ── Step 3: Save to Supabase ────────────────────────
     renderProgress(90, 'Saving to Supabase...');
     if (!currentUser) throw { msg: 'Not signed in — please log in before uploading.', detail: null };
-    const { error } = await supabaseClient.from('health_data').upsert({ id: 1, data: result }, { onConflict: 'id' });
+    const { error } = await supabaseClient.from('health_data').upsert({ user_id: currentUser.id, data: result }, { onConflict: 'user_id' });
     if (error) throw { msg: 'Failed to save to Supabase', detail: error.message };
 
     clearInterval(timerInterval);
@@ -2142,7 +2142,7 @@ async function sendMessage() {
   chatHistory.push({ role:'user', content:msg });
   try {
     const resp = await fetch('/api/chat', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json', ...(await authHeaders())},
       body: JSON.stringify({
         message: msg,
         history: requestHistory,
@@ -2163,6 +2163,12 @@ async function sendMessage() {
   } finally {
     btn.disabled=false; input.focus();
   }
+}
+
+async function authHeaders() {
+  if (!supabaseClient) return {};
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  return session?.access_token ? { Authorization: 'Bearer ' + session.access_token } : {};
 }
 
 // ── Auth ─────────────────────────────────────────────────
@@ -2282,13 +2288,17 @@ async function handleLogout() {
 async function loadAppData() {
   try {
     const [healthResp, configResp] = await Promise.all([
-      fetch('/api/health'),
+      authHeaders().then(h => fetch('/api/health', { headers: h })),
       fetch('/api/config')
     ]);
     const hd = await healthResp.json();
     const config = await configResp.json();
     chatConfig = config.chat || { serverVertex:false, serverModel:'gemini-2.5-flash', serverClaude:false, claudeModel:'claude-sonnet-4-6', byokSupported:true };
     if (!hd.error) healthData = hd;
+    if (currentUser && !hd.error) {
+      if (hd.is_demo) localStorage.removeItem('hasOwnData_' + currentUser.id);
+      else localStorage.setItem('hasOwnData_' + currentUser.id, '1');
+    }
     syncChatMode();
   } catch(e) { /* server not running */ }
 }

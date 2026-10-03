@@ -1178,6 +1178,7 @@ gh pr create --base master --title "Per-user health data and authenticated API (
 
 - [ ] **Step 1: Verify on a Vercel preview against the scratch project.** In Vercel, set the *Preview* environment's `SUPABASE_URL` / `SUPABASE_ANON_KEY` to the scratch project (and an `ANTHROPIC_API_KEY`). Open the PR's preview URL. Create two accounts (A and B).
   - A with no upload sees the demo banner and the synthetic demo data.
+  - A browser that already has localStorage `hasOwnData_<uid>=1` but no row yet must show the demo banner (the flag is now synced from the server).
   - A uploads an `export.xml`; the dashboard shows A's data.
   - B signs in on another browser: B sees demo data, **not** A's data. B uploads; A still sees A's data (refresh).
   - Chat answers for A reference A's metrics.
@@ -1197,9 +1198,9 @@ curl -s -o /dev/null -w "%{http_code}\n" https://somada.vercel.app/api/health
 ```
 Expected: `401`.
 
-- [ ] **Step 6: If something is badly broken**, run `supabase/rollback/0002_down.sql` and redeploy the previous Vercel deployment (Vercel dashboard → Deployments → previous → Promote). The legacy row (`id = 1`) was never deleted, so the old behavior returns.
+- [ ] **Step 6: If something is badly broken**, run `supabase/rollback/0002_down.sql` and redeploy the previous Vercel deployment (Vercel dashboard → Deployments → previous → Promote). The legacy row (`id = 1`) was never deleted, so the old behavior returns. The rollback script now only re-exposes the legacy row (per-user and demo rows stay private); to retry the migration after a rollback, simply re-run 0002 (it is idempotent).
 
-- [ ] **Step 7 (optional): Assign the legacy row to its owner.** If row `id = 1` is yours, in the SQL editor: `update public.health_data set user_id = '<your auth.users id>' where id = 1;`. Otherwise leave it orphaned (invisible) or delete it after confirming your backup from Task 1.
+- [ ] **Step 7 (optional): Assign the legacy row to its owner.** If row `id = 1` is yours, in the SQL editor: `update public.health_data set user_id = '<your auth.users id>' where id = 1;`. Otherwise leave it orphaned (invisible) or delete it after confirming your backup from Task 1. If the owner already re-uploaded under their account, delete that new row first (or skip this step): `user_id` is unique.
 
 ---
 

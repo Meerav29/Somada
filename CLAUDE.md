@@ -15,6 +15,7 @@ health-dashboard/
 |- parse_health.py         # Local-only Apple Health XML parser
 |- vercel.json             # SPA rewrites for Vercel
 |- .env                    # Local env vars (gitignored)
+|- supabase/               # migrations/, rollback/, tests/ (rls_check.sql), seed_demo.sql
 `- api/
    |- health.py            # GET /api/health
    |- chat.py              # POST /api/chat
@@ -38,6 +39,7 @@ health-dashboard/
 - `python parse_health.py export.xml` generates `health_data.json`.
 - `python server.py` serves the app at `http://localhost:8080`.
 - `server.py` mirrors the main `/api/*` routes for local testing only.
+- Do not set `SUPABASE_URL`/`SUPABASE_ANON_KEY` when running `server.py` locally; if set, `server.py` has no auth and will return no data.
 
 ---
 

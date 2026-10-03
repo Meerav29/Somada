@@ -151,7 +151,19 @@ describe('AuthProvider', () => {
     await act(async () => {
       await ctx.signOut()
     })
-    expect(auth.signOut).toHaveBeenCalled()
+    expect(auth.signOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('signOut falls back to local scope when global sign-out returns an error', async () => {
+    const { client, auth } = fakeClient(session)
+    auth.signOut.mockResolvedValueOnce({ error: { message: 'x' } })
+    renderProvider(async () => client)
+    await expectStatus('signedIn')
+    await act(async () => {
+      await ctx.signOut()
+    })
+    expect(auth.signOut).toHaveBeenCalledTimes(2)
+    expect(auth.signOut).toHaveBeenLastCalledWith({ scope: 'local' })
   })
 
   it('unsubscribes from auth changes on unmount', async () => {

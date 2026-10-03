@@ -22,9 +22,14 @@ describe('AppRoutes', () => {
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 
-  it('serves the Insights and Settings placeholders', () => {
+  it('serves the Insights placeholder', () => {
     renderAt(<AppRoutes />, { route: '/insights' })
     expect(screen.getByRole('heading', { name: 'Insights' })).toBeInTheDocument()
+  })
+
+  it('serves the Settings placeholder', () => {
+    renderAt(<AppRoutes />, { route: '/settings' })
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
   })
 
   it('redirects unknown paths to the dashboard', async () => {

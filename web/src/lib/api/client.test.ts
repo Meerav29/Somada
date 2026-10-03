@@ -55,6 +55,49 @@ describe('getHealth', () => {
     stubFetch(200, null)
     await expect(getHealth(async () => 'tok-a')).rejects.toMatchObject({ status: 200 })
   })
+
+  it('rejects a non-object JSON body', async () => {
+    stubFetch(200, 'ok')
+    await expect(getHealth(async () => 'tok-a')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 200,
+      message: 'Unexpected response',
+    })
+  })
+
+  it('passes null metrics and summary stats through unchanged', async () => {
+    const payload = {
+      daily: {
+        '2026-09-29': {
+          date: '2026-09-29',
+          steps: null,
+          heart_rate_avg: null,
+          heart_rate_min: null,
+          heart_rate_max: null,
+          resting_hr: null,
+          hrv: null,
+          sleep_hours: null,
+          active_calories: null,
+          exercise_minutes: null,
+          spo2: null,
+        },
+      },
+      summary: {
+        avg_steps: null,
+        avg_sleep_hours: null,
+        avg_resting_hr: null,
+        avg_hrv: null,
+        best_sleep: null,
+        worst_sleep: null,
+        best_steps_day: null,
+        total_days: 1,
+      },
+      events: [],
+      generated_at: '2026-09-30T00:00:00',
+    }
+    stubFetch(200, payload)
+    expect(await getHealth(async () => 'tok-a')).toEqual(payload)
+  })
 })
 
 describe('public config endpoints', () => {

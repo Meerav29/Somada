@@ -46,7 +46,7 @@ async function request<T>(path: string, getToken: TokenProvider | null): Promise
   const res = await fetch(path, { headers })
   const body: unknown = await res.json().catch(() => null)
   if (!res.ok) throw new ApiError(res.status, errorMessage(body, res.status))
-  if (body === null) throw new ApiError(res.status, 'Unexpected empty response')
+  if (typeof body !== 'object' || body === null) throw new ApiError(res.status, 'Unexpected response')
   return body as T
 }
 

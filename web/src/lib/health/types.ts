@@ -1,23 +1,27 @@
 // Shape documented in CLAUDE.md ("Health Data Shape"). `daily` is a dictionary keyed by date, not an array.
+// Metrics are null on days with no data (see parse_health.py and the in-browser parser in index.html).
 export interface DailyEntry {
   date: string
-  steps: number
-  resting_hr: number
-  hrv: number
-  sleep_hours: number
-  active_calories: number
-  exercise_minutes: number
-  spo2: number
+  steps: number | null
+  heart_rate_avg: number | null
+  heart_rate_min: number | null
+  heart_rate_max: number | null
+  resting_hr: number | null
+  hrv: number | null
+  sleep_hours: number | null
+  active_calories: number | null
+  exercise_minutes: number | null
+  spo2: number | null
 }
 
 export interface HealthSummary {
-  avg_steps: number
-  avg_sleep_hours: number
-  avg_resting_hr: number
-  avg_hrv: number
-  best_sleep: number
-  worst_sleep: number
-  best_steps_day: string
+  avg_steps: number | null
+  avg_sleep_hours: number | null
+  avg_resting_hr: number | null
+  avg_hrv: number | null
+  best_sleep: number | null
+  worst_sleep: number | null
+  best_steps_day: string | null
   total_days: number
 }
 

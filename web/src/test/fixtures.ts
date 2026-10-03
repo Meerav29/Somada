@@ -6,6 +6,9 @@ export function healthFixture(overrides: Partial<HealthData> = {}): HealthData {
       '2026-09-30': {
         date: '2026-09-30',
         steps: 8000,
+        heart_rate_avg: 72,
+        heart_rate_min: 52,
+        heart_rate_max: 140,
         resting_hr: 61,
         hrv: 48,
         sleep_hours: 7.1,

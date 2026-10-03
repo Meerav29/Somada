@@ -98,7 +98,10 @@ export function AuthProvider({
         return { error: error?.message ?? null, notice: null }
       },
       signOut: async () => {
-        await client?.auth.signOut()
+        if (!client) return
+        const { error } = (await client.auth.signOut()) ?? {}
+        // Global sign-out can fail (network/5xx) without clearing the local session.
+        if (error) await client.auth.signOut({ scope: 'local' })
       },
     }),
     [client, session, status],

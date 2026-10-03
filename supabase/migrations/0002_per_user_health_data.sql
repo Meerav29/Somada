@@ -1,5 +1,5 @@
 -- Per-user health data with row-level security.
--- Safe to run once on the live database. The legacy shared row (id = 1) is left in
+-- Safe to run on the live database, and safe to re-run (e.g. after 0002_down.sql). The legacy shared row (id = 1) is left in
 -- place but becomes invisible to every role (user_id null, is_demo false), so it can
 -- be assigned to its owner later or used for rollback.
 begin;
@@ -12,21 +12,31 @@ alter table public.health_data
   alter column id set default nextval('public.health_data_id_seq');
 grant usage, select on sequence public.health_data_id_seq to authenticated;
 
+-- Idempotent: columns, constraints and indexes survive 0002_down.sql, so this file
+-- can be re-run after a rollback.
 alter table public.health_data
-  add column user_id uuid references auth.users (id) on delete cascade,
-  add column is_demo boolean not null default false;
+  add column if not exists user_id uuid references auth.users (id) on delete cascade;
+alter table public.health_data
+  add column if not exists is_demo boolean not null default false;
 
 -- Plain unique constraint (NULLs are distinct) so PostgREST on_conflict=user_id works.
+alter table public.health_data drop constraint if exists health_data_user_id_key;
 alter table public.health_data
   add constraint health_data_user_id_key unique (user_id);
 -- At most one demo row.
-create unique index health_data_single_demo on public.health_data (is_demo) where is_demo;
+create unique index if not exists health_data_single_demo on public.health_data (is_demo) where is_demo;
 -- A demo row has no owner.
+alter table public.health_data drop constraint if exists health_data_demo_has_no_owner;
 alter table public.health_data
   add constraint health_data_demo_has_no_owner check (not is_demo or user_id is null);
 
 drop policy if exists "allow_public_read" on public.health_data;
 drop policy if exists "allow_auth_write" on public.health_data;
+drop policy if exists "own_row_select" on public.health_data;
+drop policy if exists "demo_row_select" on public.health_data;
+drop policy if exists "own_row_insert" on public.health_data;
+drop policy if exists "own_row_update" on public.health_data;
+drop policy if exists "own_row_delete" on public.health_data;
 
 create policy "own_row_select" on public.health_data
   for select to authenticated using (user_id = (select auth.uid()));

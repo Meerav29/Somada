@@ -64,6 +64,40 @@ begin
     raise exception 'FAIL: user A inserted a demo row';
   exception when insufficient_privilege or unique_violation then null;
   end;
+
+  -- A cannot delete B's row, the demo row, or the legacy row.
+  delete from public.health_data where data->>'who' = 'b';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: user A deleted user B row'; end if;
+
+  delete from public.health_data where is_demo;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: user A deleted the demo row'; end if;
+
+  -- A cannot reassign their row to B (denied or 0 rows are both fine; success is not).
+  begin
+    update public.health_data set user_id = '00000000-0000-0000-0000-0000000000b2'
+      where user_id = '00000000-0000-0000-0000-0000000000a1';
+    get diagnostics n = row_count;
+    if n <> 0 then raise exception 'FAIL: user A reassigned their row to user B'; end if;
+  exception when insufficient_privilege or unique_violation then null;
+  end;
+
+  -- A cannot turn their own row into a demo row.
+  begin
+    update public.health_data set is_demo = true
+      where user_id = '00000000-0000-0000-0000-0000000000a1';
+    get diagnostics n = row_count;
+    if n <> 0 then raise exception 'FAIL: user A set is_demo on own row'; end if;
+  exception when insufficient_privilege or check_violation or unique_violation then null;
+  end;
+
+  -- Client upsert path for a user with an existing row (on_conflict=user_id).
+  insert into public.health_data (user_id, data)
+  values ('00000000-0000-0000-0000-0000000000a1', '{"who":"a2"}')
+  on conflict (user_id) do update set data = excluded.data;
+  select count(*) into n from public.health_data where data->>'who' = 'a2';
+  if n <> 1 then raise exception 'FAIL: user A upsert over existing row did not take effect'; end if;
 end $$;
 
 -- Positive: a user with no row yet (C) can insert their own row and read it back.
@@ -97,6 +131,17 @@ begin
     update public.health_data set data = '{"who":"hacked"}' where data->>'who' = 'legacy';
     get diagnostics n = row_count;
     if n <> 0 then raise exception 'FAIL: anon updated the legacy row'; end if;
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- Separate block so an earlier permission error cannot skip this check.
+do $$
+begin
+  begin
+    insert into public.health_data (user_id, data)
+    values ('00000000-0000-0000-0000-0000000000a1', '{"who":"anon"}');
+    raise exception 'FAIL: anon inserted a row';
   exception when insufficient_privilege then null;
   end;
 end $$;

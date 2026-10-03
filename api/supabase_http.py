@@ -1,3 +1,4 @@
+import http.client
 import json
 import os
 import urllib.error
@@ -27,5 +28,5 @@ def http_get_json(url, headers, timeout=3):
             return resp.status, json.loads(resp.read())
     except urllib.error.HTTPError as e:
         return e.code, None
-    except (urllib.error.URLError, TimeoutError, ValueError):
+    except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError):
         return 0, None

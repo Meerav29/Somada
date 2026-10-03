@@ -58,3 +58,33 @@ def test_authenticate_returns_verified_context(fake_supabase):
 def test_authenticate_rejects_bad_token(fake_supabase):
     with pytest.raises(AuthError):
         authenticate({"Authorization": "Bearer nope"})
+
+
+def test_verify_token_rejects_non_dict_body(fake_supabase, monkeypatch):
+    """Test that verify_token handles non-dict JSON responses (e.g., list)."""
+    monkeypatch.setattr(
+        "api.supabase_http.http_get_json",
+        lambda url, headers, timeout=3: (200, [1])
+    )
+    with pytest.raises(AuthError):
+        verify_token("token-a")
+
+
+def test_verify_token_rejects_missing_id(fake_supabase, monkeypatch):
+    """Test that verify_token rejects dict response without id field."""
+    monkeypatch.setattr(
+        "api.supabase_http.http_get_json",
+        lambda url, headers, timeout=3: (200, {})
+    )
+    with pytest.raises(AuthError):
+        verify_token("token-a")
+
+
+def test_verify_token_rejects_network_error(fake_supabase, monkeypatch):
+    """Test that verify_token rejects network error responses."""
+    monkeypatch.setattr(
+        "api.supabase_http.http_get_json",
+        lambda url, headers, timeout=3: (0, None)
+    )
+    with pytest.raises(AuthError):
+        verify_token("token-a")

@@ -27,7 +27,7 @@ def verify_token(token):
         f"{url}/auth/v1/user",
         {"apikey": anon_key, "Authorization": f"Bearer {token}"},
     )
-    if status != 200 or not body or not body.get("id"):
+    if status != 200 or not isinstance(body, dict) or not body.get("id"):
         raise AuthError("Invalid or expired session.")
     return body["id"]
 

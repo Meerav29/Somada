@@ -10,6 +10,7 @@ select setval('public.health_data_id_seq',
               greatest((select coalesce(max(id), 1) from public.health_data), 1));
 alter table public.health_data
   alter column id set default nextval('public.health_data_id_seq');
+grant usage, select on sequence public.health_data_id_seq to authenticated;
 
 alter table public.health_data
   add column user_id uuid references auth.users (id) on delete cascade,

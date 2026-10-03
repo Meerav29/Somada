@@ -109,7 +109,7 @@ The frontend and chat prompt expect this structure:
 }
 ```
 
-`daily` is a dictionary keyed by date string, not an array.
+`daily` is a dictionary keyed by date string, not an array. Metrics and summary stats can be `null` (days or datasets with no data), and daily entries may also include `heart_rate_avg`, `heart_rate_min` and `heart_rate_max`.
 
 ---
 

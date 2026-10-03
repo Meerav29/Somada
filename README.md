@@ -125,6 +125,8 @@ For Google sign-in on the new app, add `https://<your-domain>/app/` (and any pre
 
 Open it with the trailing slash (`/app/`).
 
+If the classic page is missing at `http://localhost:3000/` under `vercel dev`, build it first with `npm --prefix web run build && node scripts/build-site.mjs`.
+
 ---
 
 ## Features

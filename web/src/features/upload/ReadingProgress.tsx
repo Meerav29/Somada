@@ -20,11 +20,15 @@ export function ReadingProgress({
   }, [])
 
   const percent = Math.round(Math.min(1, Math.max(0, fraction)) * 100)
+  const milestone = Math.floor(percent / 25) * 25
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000))
 
   return (
-    <section aria-live="polite">
+    <section>
       <h2>Reading {fileName}</h2>
+      <p role="status" aria-live="polite" className="muted">
+        {`Reading ${fileName}… ${milestone}%`}
+      </p>
       <div
         role="progressbar"
         aria-label="Reading progress"

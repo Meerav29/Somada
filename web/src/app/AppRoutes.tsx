@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '../features/auth/LoginPage'
+import { UploadPage } from '../features/upload/UploadPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { PlaceholderPage } from './PlaceholderPage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -12,6 +13,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Shell />}>
           <Route index element={<DashboardPage />} />
+          <Route path="upload" element={<UploadPage />} />
           <Route
             path="insights"
             element={

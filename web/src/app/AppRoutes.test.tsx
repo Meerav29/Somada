@@ -32,6 +32,12 @@ describe('AppRoutes', () => {
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
   })
 
+  it('serves the upload page', () => {
+    stubFetch(200, healthFixture())
+    renderAt(<AppRoutes />, { route: '/upload' })
+    expect(screen.getByRole('heading', { name: 'Upload your Apple Health export' })).toBeInTheDocument()
+  })
+
   it('redirects unknown paths to the dashboard', async () => {
     stubFetch(200, healthFixture())
     renderAt(<AppRoutes />, { route: '/nope' })

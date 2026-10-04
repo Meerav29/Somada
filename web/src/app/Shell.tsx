@@ -11,6 +11,7 @@ export function Shell() {
           <NavLink to="/" end>
             Dashboard
           </NavLink>
+          <NavLink to="/upload">Upload</NavLink>
           <NavLink to="/insights">Insights</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>

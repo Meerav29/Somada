@@ -107,6 +107,28 @@ Open `http://localhost:8080`.
 
 ---
 
+## New app (work in progress)
+
+A rebuilt frontend lives in `web/` (Vite + React + TypeScript) and is served at `/app/` next to the classic page, which stays at `/` until the new app reaches parity. Today it has sign-in (email/password and Google), an app shell, and a dashboard placeholder; charts, upload and chat are still in the classic app.
+
+Develop it with two terminals:
+
+```bash
+vercel dev                 # serves the Python API on :3000 (needs SUPABASE_* env vars)
+npm --prefix web install
+npm --prefix web run dev   # http://localhost:5173/app/ (proxies /api to :3000)
+```
+
+Checks: `npm --prefix web run lint`, `typecheck`, `test`, `build`. The Vercel build assembles both apps with `scripts/build-site.mjs`.
+
+For Google sign-in on the new app, add `https://<your-domain>/app/` (and any preview URLs) to the Redirect URLs in Supabase Authentication settings.
+
+Open it with the trailing slash (`/app/`).
+
+If the classic page is missing at `http://localhost:3000/` under `vercel dev`, build it first with `npm --prefix web run build && node scripts/build-site.mjs`.
+
+---
+
 ## Features
 
 - Dashboard views for steps, sleep, resting HR, and HRV

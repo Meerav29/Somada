@@ -99,3 +99,4 @@ Physician PDF export and share links (natural follow-up once data is per-user), 
 - Live Supabase schema and row contents (blocks the Step 0 migration decision).
 - Charting library choice (Recharts vs Chart.js wrapper), to settle in the implementation plan.
 - Deviation: the plan keeps `id` as the primary key (identity sequence) with `user_id` as a unique column rather than making `user_id` the primary key, so the demo row (null user_id) and the legacy row can coexist and rollback works.
+- Deviation: during rollout steps 1-4 the new app is served at `/app/` and the legacy page stays at `/`; the swap (new app at `/`, legacy removed) happens at cutover, instead of putting the legacy page at `/legacy`. Rationale: existing users and bookmarks keep working with zero redirects.

@@ -15,6 +15,8 @@ health-dashboard/
 |- parse_health.py         # Local-only Apple Health XML parser
 |- vercel.json             # SPA rewrites for Vercel
 |- .env                    # Local env vars (gitignored)
+|- web/                    # New frontend (Vite + React + TS), served at /app/
+|- scripts/                # build-site.mjs, make_demo_seed.py
 |- supabase/               # migrations/, rollback/, tests/ (rls_check.sql), seed_demo.sql
 `- api/
    |- health.py            # GET /api/health
@@ -107,7 +109,7 @@ The frontend and chat prompt expect this structure:
 }
 ```
 
-`daily` is a dictionary keyed by date string, not an array.
+`daily` is a dictionary keyed by date string, not an array. Metrics and summary stats can be `null` (days or datasets with no data), and daily entries may also include `heart_rate_avg`, `heart_rate_min` and `heart_rate_max`.
 
 ---
 
@@ -168,6 +170,7 @@ Returns `{ url, anonKey }` for frontend initialization.
 ## Frontend Notes
 
 - `index.html` is the whole app.
+- The new app in `web/` fetches its Supabase config at runtime from `/api/supabase_config` and sends the user's JWT as `Authorization: Bearer` on `/api/*` calls. `AuthStatus` is `unconfigured` in local dev (no Supabase env), which skips login. `index.html` (legacy) is still the production app at `/`.
 - `chatConfig` tracks which server-side providers are configured and which models they use.
 - `currentChatMode` is `server`, `claude`, or `byok`.
 - The Insights page has a **Vertex / Claude / BYOK** 3-button model selector. Vertex and Claude are always clickable (server keys, free for users). BYOK is greyed out until the user saves a key.

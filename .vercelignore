@@ -5,3 +5,4 @@ __pycache__/
 *.pyo
 .env
 .git
+web/node_modules

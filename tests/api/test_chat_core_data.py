@@ -3,7 +3,7 @@ import json
 import pytest
 
 from api.auth import AuthContext
-from api.chat_core import fetch_supabase_health_data, load_health_data
+from api.chat_core import HealthDataUnavailable, fetch_supabase_health_data, load_health_data
 
 
 def test_user_gets_their_own_row(fake_supabase):
@@ -69,18 +69,20 @@ def test_own_row_has_no_is_demo_key(fake_supabase):
 
 
 @pytest.mark.parametrize("forced", [(503, None), (0, None), (500, None), (401, None)])
-def test_failed_own_row_query_does_not_serve_demo(fake_supabase, forced):
+def test_failed_own_row_query_raises_and_does_not_serve_demo(fake_supabase, forced):
     fake_supabase["force_status"]["user_id=eq.user-a"] = forced
     ctx = AuthContext(user_id="user-a", token="token-a")
-    assert fetch_supabase_health_data(ctx) is None
+    with pytest.raises(HealthDataUnavailable):
+        fetch_supabase_health_data(ctx)
     assert all("is_demo" not in url for url, _ in fake_supabase["calls"])
 
 
-def test_failed_demo_query_returns_none(fake_supabase):
+def test_failed_demo_query_raises(fake_supabase):
     fake_supabase["users"]["token-c"] = "user-c"
     fake_supabase["force_status"]["is_demo=eq.true"] = (503, None)
     ctx = AuthContext(user_id="user-c", token="token-c")
-    assert fetch_supabase_health_data(ctx) is None
+    with pytest.raises(HealthDataUnavailable):
+        fetch_supabase_health_data(ctx)
 
 
 def test_own_row_request_url_shape(fake_supabase):

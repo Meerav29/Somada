@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 
 from api.auth import AuthError, authenticate
-from api.chat_core import load_health_data
+from api.chat_core import HealthDataUnavailable, load_health_data
 
 
 class handler(BaseHTTPRequestHandler):
@@ -13,7 +13,13 @@ class handler(BaseHTTPRequestHandler):
             self._send_json({"error": str(e)}, 401)
             return
 
-        data = load_health_data(auth=auth)
+        try:
+            data = load_health_data(auth=auth)
+        except HealthDataUnavailable:
+            self._send_json(
+                {"error": "Health data is temporarily unavailable. Please try again."}, 503
+            )
+            return
         if data is None:
             data = {"error": "No health data found."}
         self._send_json(data)

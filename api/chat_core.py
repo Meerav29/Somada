@@ -46,6 +46,10 @@ def get_claude_model():
     return (os.environ.get("CLAUDE_MODEL") or "").strip() or DEFAULT_CLAUDE_MODEL
 
 
+class HealthDataUnavailable(Exception):
+    """Supabase could not be queried, so we cannot say whether the user has data."""
+
+
 def fetch_supabase_health_data(auth):
     """Return the caller's own health data, else the shared demo data, else None.
 
@@ -62,14 +66,16 @@ def fetch_supabase_health_data(auth):
         f"{base}&user_id=eq.{urllib.parse.quote(auth.user_id, safe='')}", headers
     )
     if status != 200:
-        # Never mask an outage as the user's data by serving the demo row.
-        return None
+        # An outage must never look like "no data" and must never serve the demo row.
+        raise HealthDataUnavailable(f"health_data query failed with status {status}")
     if rows:
         return rows[0].get("data")
 
     # Signed in, query succeeded, no row yet: fall back to the shared demo data.
     status, rows = supabase_http.http_get_json(f"{base}&is_demo=eq.true", headers)
-    if status == 200 and rows:
+    if status != 200:
+        raise HealthDataUnavailable(f"demo data query failed with status {status}")
+    if rows:
         data = rows[0].get("data")
         if isinstance(data, dict):
             return {**data, "is_demo": True}

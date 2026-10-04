@@ -4,6 +4,7 @@ import os
 
 from api.auth import AuthError, authenticate
 from api.chat_core import (
+    HealthDataUnavailable,
     chat_with_claude,
     chat_with_vertex,
     get_claude_model,
@@ -35,7 +36,13 @@ class handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length))
 
-        health_data = load_health_data(auth=auth)
+        try:
+            health_data = load_health_data(auth=auth)
+        except HealthDataUnavailable:
+            self._send_json(
+                {"error": "Health data is temporarily unavailable. Please try again."}, 503
+            )
+            return
         if not health_data:
             self._send_json({"reply": "No health data available."})
             return

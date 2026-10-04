@@ -127,6 +127,10 @@ Open it with the trailing slash (`/app/`).
 
 If the classic page is missing at `http://localhost:3000/` under `vercel dev`, build it first with `npm --prefix web run build && node scripts/build-site.mjs`.
 
+### Uploading Apple Health data in the new app
+
+Open `/app/upload`, drop Apple's `export.zip` (or `export.xml`) and review the preview, then press **Save**. The file is parsed in your browser by a Web Worker (see `web/src/lib/health/`), and only aggregated daily numbers are saved to your account. Re-uploading replaces your data and keeps your life events. The classic upload at `/` still works.
+
 ---
 
 ## Features

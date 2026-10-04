@@ -177,6 +177,8 @@ Returns `{ url, anonKey }` for frontend initialization.
 - The Settings page is where users manage their BYOK key. A provider dropdown lets them choose Vertex AI or Claude for their own key.
 - BYOK localStorage keys: `userByokApiKey` (the key), `userByokProvider` (`vertex` or `claude`). The legacy key `userVertexApiKey` is still read for migration but new saves go to `userByokApiKey`.
 - `syncChatMode()` no longer gates Vertex/Claude on server key availability — both are always selectable. Only BYOK requires a saved key.
+- The new app's upload flow (`web/src/features/upload/`, parser in `web/src/lib/health/`): `parseExport` streams XML chunks into per-day running totals (O(days) memory) inside a Web Worker; `fileToChunks` reads `.xml` or streams the health XML entry out of `.zip` with `fflate`; `repository.ts` saves under RLS and keeps the user's existing `events`. `parity.test.ts` extracts the classic `parseHealthXML` from `index.html` and asserts identical output, so the two parsers must stay in step until the classic one is removed.
+- `/api/health` and `/api/chat` answer `503` (not "No health data found") when Supabase cannot be queried.
 
 ---
 

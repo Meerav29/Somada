@@ -42,7 +42,7 @@ Assumptions (stated so they can be corrected):
 
 No UI in this layer.
 
-- **`metrics.ts`** — the metric map and the set of "asleep" sleep values, copied verbatim from the classic parser. Only metrics that are saved are collected; `respiratory_rate` and `walking_hr` (collected but never saved by the classic parser) are not.
+- **`metrics.ts`** — the metric map and the set of "asleep" sleep values, copied verbatim from the classic parser. Values for `respiratory_rate` and `walking_hr` (never saved by the classic parser) are not accumulated, but such a record still creates its day entry, exactly as in the classic parser, so `total_days` matches.
 - **`parseExport(chunks, options)`** — pure core. Input: `AsyncIterable<Uint8Array>`. Output: `{ daily, summary, stats }` where `stats` = `{ recordsSeen, recordsKept, firstDate, lastDate, bytesRead, maxCarryBytes }`. Options: `onProgress`, `now` (injectable for tests), `retentionMonths` (default 18).
   - Decodes UTF-8 in streaming mode, scans for `<Record …>` tags, and carries a partial tag over to the next chunk.
   - The tag tokenizer respects quoted attribute values (the classic `[^>]*?` regex breaks on a `>` inside a value).
@@ -51,7 +51,7 @@ No UI in this layer.
   - Date key, sleep-duration arithmetic, rounding and averaging are identical to the classic parser.
   - Guard: if a `<Record` start has no closing `>` within ~1 MB of carry, abort with `corrupt-file`.
 - **`summary.ts`** — `computeSummaryStats` ported unchanged in behaviour (null-safe min/max).
-- **`fileToChunks(file)`** — `.xml` -> `file.stream()`. `.zip` -> streaming unzip of the entry whose basename is `export.xml`; if none, the largest `.xml` entry whose name does not contain "cda" (Apple localizes export file names). The first 64 KB of the chosen entry must contain `<HealthData`, otherwise `not-health-export`. Progress is bytes of the *file* consumed over `file.size`.
+- **`fileToChunks(file)`** — `.xml` -> `file.stream()`. `.zip` -> streaming unzip of the first `.xml` entry whose name does not contain "cda" and is not macOS resource-fork junk (`__MACOSX/` or a `._` basename). This finds `export.xml` and its localized variants in a single pass; "largest" was dropped because entry sizes are not known up front in a streamed ZIP. The first 64 KB of the chosen entry must contain `<HealthData`, otherwise `not-health-export`. Progress is bytes of the *file* consumed over `file.size`.
 - **`parse.worker.ts`** — receives `{ file }`; posts throttled (~10/s) `progress` messages (`fraction`, `recordsSeen`, `label`), then one `done` (result) or one `error` (`code`, `message`).
 - **`useHealthUpload()`** — React hook owning the worker. States: `idle | reading | parsed | saving | saved | error`. `cancel()` terminates the worker; the worker is also terminated on unmount. A worker factory is injectable for tests.
 
@@ -101,7 +101,7 @@ Entry points: the dashboard empty state and the sample-data banner link to `/app
 - ZIP accepted directly; no 600 MB hard limit (streaming).
 - Quote-aware tag tokenizer.
 - New users start with no events; re-uploads keep existing events (the classic app attaches the author's semester dates to everyone).
-- Collects only metrics that are saved.
+- Sleep timestamps are parsed as ISO local time (`T` separator), so sleep works in Safari (the classic space-separated form is not parsed by Safari).
 - `updated_at` refreshed on save.
 
 ## Out of scope

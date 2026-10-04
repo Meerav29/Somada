@@ -1,4 +1,4 @@
-import type { HealthData } from '../lib/health/types'
+import type { HealthData, ParseResult } from '../lib/health/types'
 
 export function healthFixture(overrides: Partial<HealthData> = {}): HealthData {
   return {
@@ -30,5 +30,21 @@ export function healthFixture(overrides: Partial<HealthData> = {}): HealthData {
     events: [],
     generated_at: '2026-09-30T00:00:00',
     ...overrides,
+  }
+}
+
+export function parseResultFixture(): ParseResult {
+  const h = healthFixture()
+  return {
+    daily: h.daily,
+    summary: { ...h.summary, total_days: 120 },
+    stats: {
+      recordsSeen: 5000,
+      recordsKept: 4000,
+      firstDate: '2026-06-03',
+      lastDate: '2026-09-30',
+      bytesRead: 1_000_000,
+      maxCarryBytes: 300,
+    },
   }
 }

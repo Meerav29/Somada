@@ -82,6 +82,17 @@ describe('loadOwnEvents', () => {
     const { client } = fakeClient({ selectError: { message: 'boom' } })
     await expect(loadOwnEvents(client, 'user-a')).rejects.toMatchObject({ code: 'save-failed' })
   })
+
+  it.each([
+    [{ message: 'JWT expired', code: 'PGRST303' }, 'session-expired'],
+    [{ message: 'JWT expired', code: 'PGRST301' }, 'session-expired'],
+    [{ message: 'boom' }, 'save-failed'],
+  ])('maps read error %j to %s (also through saveOwnHealth)', async (selectError, code) => {
+    const { client, calls } = fakeClient({ selectError })
+    await expect(loadOwnEvents(client, 'user-a')).rejects.toMatchObject({ code })
+    await expect(saveOwnHealth(client, 'user-a', parsed())).rejects.toMatchObject({ code })
+    expect(calls.upserts).toHaveLength(0)
+  })
 })
 
 describe('saveOwnHealth', () => {

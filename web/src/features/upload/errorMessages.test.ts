@@ -13,4 +13,11 @@ describe('describeUploadError', () => {
     const retryable = UPLOAD_ERROR_CODES.filter((code) => describeUploadError(code).retry)
     expect(retryable).toEqual(['save-failed'])
   })
+
+  it('never promises a Try again button for a code that has none', () => {
+    for (const code of UPLOAD_ERROR_CODES) {
+      const text = describeUploadError(code)
+      if (!text.retry) expect(text.hint).not.toMatch(/try again/i)
+    }
+  })
 })

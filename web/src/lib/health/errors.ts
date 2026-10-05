@@ -28,3 +28,9 @@ export class UploadError extends Error {
     this.code = code
   }
 }
+
+/** Map anything thrown while parsing to the error the UI shows; unexpected failures are `worker-failed`. */
+export function toWorkerError(e: unknown): UploadErrorInfo {
+  if (e instanceof UploadError) return { code: e.code, message: e.message }
+  return { code: 'worker-failed', message: e instanceof Error ? e.message : String(e) }
+}

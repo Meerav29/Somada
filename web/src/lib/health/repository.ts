@@ -19,7 +19,7 @@ export async function loadOwnEvents(client: SupabaseClient, userId: string): Pro
     .select('data')
     .eq('user_id', userId)
     .maybeSingle()
-  if (error) throw new UploadError('save-failed', error.message)
+  if (error) throw new UploadError(isAuthError(error) ? 'session-expired' : 'save-failed', error.message)
   const events = (data?.data as Partial<HealthData> | null | undefined)?.events
   return Array.isArray(events) ? events : []
 }

@@ -39,7 +39,7 @@ const MESSAGES: Record<UploadErrorCode, ErrorText> = {
   },
   'worker-failed': {
     title: 'Something went wrong while reading the file',
-    hint: 'It may be too large for this browser. Try again, or use a desktop browser.',
+    hint: 'It may be too large for this browser. Choose the file again, or try a desktop browser with more memory.',
     retry: false,
   },
   'save-failed': {

@@ -1,4 +1,4 @@
-import { UploadError } from './errors'
+import { toWorkerError } from './errors'
 import { fileToChunks } from './fileToChunks'
 import { parseExport } from './parseExport'
 import type { WorkerMessage, WorkerRequest } from './worker-protocol'
@@ -29,8 +29,8 @@ async function run(file: File): Promise<void> {
     const result = await parseExport(chunks, { onProgress: ({ recordsSeen }) => progress(recordsSeen) })
     scope.postMessage({ type: 'done', result })
   } catch (e) {
-    const err = e instanceof UploadError ? e : new UploadError('corrupt-file', e instanceof Error ? e.message : String(e))
-    scope.postMessage({ type: 'error', code: err.code, message: err.message })
+    const { code, message } = toWorkerError(e)
+    scope.postMessage({ type: 'error', code, message })
   }
 }
 

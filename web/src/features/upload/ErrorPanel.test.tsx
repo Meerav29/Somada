@@ -24,4 +24,11 @@ describe('ErrorPanel', () => {
     render(<ErrorPanel error={{ code: 'save-failed', message: 'x' }} onReset={() => {}} />)
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
+
+  it('never renders the raw technical message', () => {
+    const raw = 'duplicate key value violates unique constraint "health_data_user_id_key"'
+    render(<ErrorPanel error={{ code: 'save-failed', message: raw }} onReset={() => {}} />)
+    expect(screen.queryByText(raw, { exact: false })).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/duplicate key/)
+  })
 })

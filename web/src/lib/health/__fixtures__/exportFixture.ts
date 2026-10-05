@@ -99,6 +99,32 @@ export function standardFixtureXml(): string {
   return exportXml(r.join('\n'))
 }
 
+/**
+ * Parity-only extras (kept apart so parseExport.test.ts expectations are unaffected). Pins:
+ *  01-20  steps 1000 + 2000.6 + 500 = 3500.6 (round -> 3501, floor -> 3500)
+ *  01-21  one asleep record of exactly 440 min (7.33 h at 2 decimals, 7.3 at 1)
+ *  01-22  asleep 23:30 -> 01:10 next day, counted on the start day
+ *  2025-01-15 steps: inside the pinned cutoff (2024-09-01) but outside the real clock's 18 months
+ *  2024-08-31 steps (dropped) and 2024-09-01 steps (kept): `<` vs `<=` at the cutoff
+ */
+export function parityExtrasXml(): string {
+  const r: string[] = [
+    record(TYPE.steps, at('2026-01-20', '08:00:00'), 1000),
+    record(TYPE.steps, at('2026-01-20', '12:00:00'), 2000.6),
+    record(TYPE.steps, at('2026-01-20', '18:00:00'), 500),
+    record(TYPE.sleep, at('2026-01-21', '00:00:00'), 'HKCategoryValueSleepAnalysisAsleepCore', {
+      end: at('2026-01-21', '07:20:00'),
+    }),
+    record(TYPE.sleep, at('2026-01-22', '23:30:00'), 'HKCategoryValueSleepAnalysisAsleepDeep', {
+      end: at('2026-01-23', '01:10:00'),
+    }),
+    record(TYPE.steps, at('2025-01-15', '09:00:00'), 4321),
+    record(TYPE.steps, at('2024-08-31', '12:00:00'), 111),
+    record(TYPE.steps, at('2024-09-01', '12:00:00'), 222),
+  ]
+  return exportXml(r.join('\n'))
+}
+
 /** Encode `text` as UTF-8 and yield it in `size`-byte chunks (which may split multi-byte characters). */
 export async function* toChunks(text: string, size: number): AsyncGenerator<Uint8Array> {
   const bytes = new TextEncoder().encode(text)

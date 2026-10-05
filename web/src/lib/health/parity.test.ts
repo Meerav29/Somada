@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { FIXTURE_NOW, standardFixtureXml, toChunks } from './__fixtures__/exportFixture'
+import { FIXTURE_NOW, parityExtrasXml, standardFixtureXml, toChunks } from './__fixtures__/exportFixture'
 import { parseExport } from './parseExport'
 
 const html = readFileSync(fileURLToPath(new URL('../../../../index.html', import.meta.url)), 'utf8')
@@ -56,5 +56,25 @@ describe('parity with the classic parser (index.html)', () => {
     const actual = await parseExport(toChunks(xml, 1), { now: FIXTURE_NOW })
     expect(actual.daily).toEqual(expected.daily)
     expect(actual.summary).toEqual(expected.summary)
+  })
+
+  describe('extras fixture (rounding, sleep precision, midnight, retention cutoff)', () => {
+    it.each([64, 1])('agrees with the classic parser at chunk size %i', async (size) => {
+      const xml = parityExtrasXml()
+      const expected = await classic(xml)
+      const actual = await parseExport(toChunks(xml, size), { now: FIXTURE_NOW })
+      expect(actual.daily).toEqual(expected.daily)
+      expect(actual.summary).toEqual(expected.summary)
+    })
+
+    it('keeps the cutoff day and earlier in-range data, and drops the day before (not vacuous)', async () => {
+      const actual = await parseExport(toChunks(parityExtrasXml(), 64), { now: FIXTURE_NOW })
+      expect(actual.daily['2025-01-15']).toBeDefined()
+      expect(actual.daily['2024-09-01']).toBeDefined()
+      expect(actual.daily['2024-08-31']).toBeUndefined()
+      expect(actual.daily['2026-01-20'].steps).toBe(3501)
+      expect(actual.daily['2026-01-21'].sleep_hours).toBe(7.33)
+      expect(actual.daily['2026-01-22'].sleep_hours).toBe(1.67)
+    })
   })
 })

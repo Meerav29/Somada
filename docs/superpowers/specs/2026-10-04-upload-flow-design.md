@@ -51,7 +51,7 @@ No UI in this layer.
   - Date key, sleep-duration arithmetic, rounding and averaging are identical to the classic parser.
   - Guard: if a `<Record` start has no closing `>` within ~1 MB of carry, abort with `corrupt-file`.
 - **`summary.ts`** — `computeSummaryStats` ported unchanged in behaviour (null-safe min/max).
-- **`fileToChunks(file)`** — `.xml` -> `file.stream()`. `.zip` -> streaming unzip of the first `.xml` entry whose name does not contain "cda" and is not macOS resource-fork junk (`__MACOSX/` or a `._` basename). This finds `export.xml` and its localized variants in a single pass; "largest" was dropped because entry sizes are not known up front in a streamed ZIP. The first 64 KB of the chosen entry must contain `<HealthData`, otherwise `not-health-export`. Progress is bytes of the *file* consumed over `file.size`.
+- **`fileToChunks(file)`** — `.xml` -> `file.stream()`. `.zip` -> streaming unzip of the first `.xml` entry whose name does not contain "cda" and is not macOS resource-fork junk (`__MACOSX/` or a dot-prefixed basename such as `._export.xml`). This finds `export.xml` and its localized variants in a single pass; "largest" was dropped because entry sizes are not known up front in a streamed ZIP. The first 64 KB of the chosen entry must contain `<HealthData`, otherwise `not-health-export`. Progress is bytes of the *file* consumed over `file.size`.
 - **`parse.worker.ts`** — receives `{ file }`; posts throttled (~10/s) `progress` messages (`fraction`, `recordsSeen`, `label`), then one `done` (result) or one `error` (`code`, `message`).
 - **`useHealthUpload()`** — React hook owning the worker. States: `idle | reading | parsed | saving | saved | error`. `cancel()` terminates the worker; the worker is also terminated on unmount. A worker factory is injectable for tests.
 
@@ -106,7 +106,7 @@ Entry points: the dashboard empty state and the sample-data banner link to `/app
 
 ## Out of scope
 
-Phone-optimized layout, life-event editing, merging several exports, workouts and CDA data, server-side parsing, the charting-library choice, restyling to match the classic look, and the API's outage-vs-no-data ambiguity (a Step 0 follow-up that should be fixed before this ships to real users, because an outage would otherwise tell a user with data that they have none).
+Phone-optimized layout, life-event editing, merging several exports, workouts and CDA data, server-side parsing, the charting-library choice, and restyling to match the classic look. The API's outage-vs-no-data ambiguity is not out of scope: it is delivered in this plan (`/api/health` and `/api/chat` answer 503 when Supabase cannot be queried, so an outage no longer tells a user with data that they have none).
 
 ## Delivery
 

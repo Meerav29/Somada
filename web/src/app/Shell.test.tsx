@@ -24,6 +24,7 @@ describe('Shell', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'Insights' })).toHaveAttribute('href', '/insights')
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
+    expect(screen.getByRole('link', { name: 'Upload' })).toHaveAttribute('href', '/upload')
     expect(screen.getByText('page body')).toBeInTheDocument()
   })
 

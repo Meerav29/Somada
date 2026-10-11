@@ -37,13 +37,21 @@ describe('DashboardPage', () => {
     stubFetch(200, { ...ownData(), is_demo: true })
     renderAt(<DashboardPage />)
     expect(await screen.findByText(/You're viewing sample data/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Upload your own data' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Upload your own data' })).toHaveAttribute('href', '/upload')
   })
 
   it('tells new users there is no data yet when the server has none', async () => {
     stubFetch(200, { error: 'No health data found.' })
     renderAt(<DashboardPage />)
     expect(await screen.findByRole('heading', { name: 'No health data yet' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Upload your export' })).toHaveAttribute('href', '/upload')
+  })
+
+  it('shows an outage as an error, not as "no health data yet"', async () => {
+    stubFetch(503, { error: 'Health data is temporarily unavailable. Please try again.' })
+    renderAt(<DashboardPage />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Health data is temporarily unavailable')
+    expect(screen.queryByRole('heading', { name: 'No health data yet' })).not.toBeInTheDocument()
   })
 
   it('shows the server error message when the request fails', async () => {

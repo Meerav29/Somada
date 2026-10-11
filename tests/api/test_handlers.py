@@ -68,3 +68,25 @@ def test_chat_uses_the_callers_own_data(fake_supabase, call, monkeypatch):
     )
     assert status == 200 and body["reply"] == "stub reply"
     assert seen["health_data"] == {"who": "b"}
+
+
+def test_health_outage_is_503_not_no_data(fake_supabase, call):
+    fake_supabase["force_status"]["user_id=eq.user-a"] = (503, None)
+    status, body = call(health_module.handler, headers=bearer("token-a"))
+    assert status == 503
+    assert body == {"error": "Health data is temporarily unavailable. Please try again."}
+
+
+def test_chat_outage_is_503_and_never_calls_the_model(fake_supabase, call, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "server-key")
+    calls = []
+    monkeypatch.setattr(chat_module, "chat_with_claude", lambda *a, **k: calls.append(a) or "x")
+    fake_supabase["force_status"]["user_id=eq.user-a"] = (503, None)
+    status, body = call(
+        chat_module.handler,
+        "POST",
+        headers=bearer("token-a"),
+        body={"message": "hi", "chatMode": "claude"},
+    )
+    assert status == 503 and "error" in body
+    assert calls == []

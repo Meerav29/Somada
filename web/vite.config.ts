@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   base: '/app/',
   plugins: [react()],
+  worker: { format: 'es' },
   server: {
     // `vercel dev` serves the Python API on :3000
     proxy: { '/api': 'http://localhost:3000' },

@@ -41,3 +41,22 @@ export interface HealthData {
   /** Set by the server when this is the shared synthetic demo dataset rather than the user's own data. */
   is_demo?: boolean
 }
+
+export interface ParseStats {
+  /** Every <Record> tag seen, whatever its type. */
+  recordsSeen: number
+  /** Records of a known metric that fall inside the retention window. */
+  recordsKept: number
+  firstDate: string | null
+  lastDate: string | null
+  /** Decoded XML bytes consumed. */
+  bytesRead: number
+  /** Largest partial-tag buffer held between chunks (memory-bound check). */
+  maxCarryBytes: number
+}
+
+export interface ParseResult {
+  daily: Record<string, DailyEntry>
+  summary: HealthSummary
+  stats: ParseStats
+}

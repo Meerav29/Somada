@@ -114,3 +114,88 @@ button {
   background: var(--warn-bg);
   color: var(--warn-fg);
 }
+
+/* Upload flow */
+.muted {
+  color: var(--muted);
+}
+
+.guide-steps {
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.dropzone {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 32px 16px;
+  text-align: center;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dropzone.dragging,
+.dropzone:focus-within {
+  border-color: var(--accent);
+}
+
+.dropzone.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dropzone-title {
+  font-weight: 600;
+}
+
+.dropzone input[type='file'] {
+  max-width: 100%;
+}
+
+.progress {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.cards li {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sparklines {
+  display: grid;
+  gap: 8px;
+  color: var(--accent);
+}
+
+.sparkline {
+  width: 100%;
+  height: 48px;
+}
+
+.upload-error {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
